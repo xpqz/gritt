@@ -140,8 +140,14 @@ Latin-named files/directories for session continuity:
 
 - **FACIENDA.md** - *Things to be done*: TODO list with completed section
 - **OPERANDA.md** - *Things being worked on*: Current state, read at session start
-- **deliberanda/** - *Things to be deliberated*: One file per pending decision
+- **deliberanda/** - *Things to be deliberated*: One file per pending decision (no prefix, sorted by modification time)
 - **adnotata/** - *Things noted*: Numbered exploration entries (0001-topic.md)
+
+### Naming Conventions
+
+**adnotata/** uses numbered prefixes (0001-, 0002-, ...) because these are permanent records. We may go back and add notes to existing entries, so stable ordering matters.
+
+**deliberanda/** has no prefix - just descriptive filenames. Multiple discussions happen concurrently, and most recent modification is the strongest signal for what's active.
 
 ### Claude Usage
 
