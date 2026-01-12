@@ -22,8 +22,9 @@ type Report struct {
 
 // TestResult represents a single test result
 type TestResult struct {
-	Name   string
-	Passed bool
+	Name        string
+	Passed      bool
+	SnapshotIdx int // Index of related snapshot (-1 if none)
 }
 
 // Snapshot represents a captured screen state
@@ -40,9 +41,13 @@ func NewReport(outputDir string) *Report {
 	}
 }
 
-// AddResult adds a test result
+// AddResult adds a test result with link to most recent snapshot
 func (r *Report) AddResult(name string, passed bool) {
-	r.Tests = append(r.Tests, TestResult{Name: name, Passed: passed})
+	snapIdx := len(r.Snapshots) - 1 // Link to most recent snapshot
+	if snapIdx < 0 {
+		snapIdx = -1
+	}
+	r.Tests = append(r.Tests, TestResult{Name: name, Passed: passed, SnapshotIdx: snapIdx})
 }
 
 // AddSnapshot adds a screen snapshot
@@ -137,15 +142,8 @@ func (r *Report) Generate() (string, error) {
 		statusText = fmt.Sprintf("%d test(s) failed", r.Failed())
 	}
 
-	var snapshots strings.Builder
-	for _, snap := range r.Snapshots {
-		snapshots.WriteString(fmt.Sprintf(`<div class="snapshot">
-<h3>%s</h3>
-<pre>%s</pre>
-</div>
-`, html.EscapeString(snap.Label), ansiToHTML(snap.Content)))
-	}
-
+	// Build test results list with links
+	var testResults strings.Builder
 	for _, t := range r.Tests {
 		class := "pass"
 		symbol := "✓"
@@ -153,8 +151,23 @@ func (r *Report) Generate() (string, error) {
 			class = "fail"
 			symbol = "✗"
 		}
-		snapshots.WriteString(fmt.Sprintf(`<div class="result %s">%s %s</div>
+		if t.SnapshotIdx >= 0 {
+			testResults.WriteString(fmt.Sprintf(`<div class="result %s"><a href="#snap-%d">%s %s</a></div>
+`, class, t.SnapshotIdx, symbol, html.EscapeString(t.Name)))
+		} else {
+			testResults.WriteString(fmt.Sprintf(`<div class="result %s">%s %s</div>
 `, class, symbol, html.EscapeString(t.Name)))
+		}
+	}
+
+	// Build snapshots with anchors
+	var snapshots strings.Builder
+	for i, snap := range r.Snapshots {
+		snapshots.WriteString(fmt.Sprintf(`<div class="snapshot" id="snap-%d">
+<h3>%s</h3>
+<pre>%s</pre>
+</div>
+`, i, html.EscapeString(snap.Label), ansiToHTML(snap.Content)))
 	}
 
 	htmlContent := fmt.Sprintf(`<!DOCTYPE html>
@@ -193,8 +206,12 @@ func (r *Report) Generate() (string, error) {
             margin: 5px 0;
             border-radius: 4px;
         }
-        .result.pass { background: #1a3d2a; color: #00ff88; }
-        .result.fail { background: #3d1a1a; color: #ff4444; }
+        .result.pass { background: #1a3d2a; }
+        .result.pass a { color: #00ff88; text-decoration: none; }
+        .result.fail { background: #3d1a1a; }
+        .result.fail a { color: #ff4444; text-decoration: none; }
+        .result a:hover { text-decoration: underline; }
+        .results-list { margin-bottom: 30px; }
         .snapshot {
             margin: 20px 0;
             background: #252540;
@@ -241,11 +258,16 @@ func (r *Report) Generate() (string, error) {
         </div>
     </div>
 
-    <h2>Test Progress</h2>
+    <h2>Tests</h2>
+    <div class="results-list">
+    %s
+    </div>
+
+    <h2>Snapshots</h2>
     %s
 </body>
 </html>
-`, r.Timestamp, r.Timestamp, statusClass, statusText, len(r.Tests), r.Passed(), r.Failed(), snapshots.String())
+`, r.Timestamp, r.Timestamp, statusClass, statusText, len(r.Tests), r.Passed(), r.Failed(), testResults.String(), snapshots.String())
 
 	if err := os.WriteFile(filename, []byte(htmlContent), 0644); err != nil {
 		return "", fmt.Errorf("failed to write report: %w", err)

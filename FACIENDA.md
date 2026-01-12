@@ -2,7 +2,7 @@
 
 ## Prerequisites (before Phase 3)
 - [x] Key mappings config - config.json works, leader key system (C-] prefix)
-- [ ] Ctrl+C confirmation / clipboard support
+- [~] Ctrl+C handling - hint shows, quit behind C-] q with y/n confirm (clipboard support still TODO)
 - [ ] Connection resilience: on unexpected Dyalog death, keep gritt alive with session buffer intact, show disconnected state, allow reconnect (`)off` intentional shutdown should still exit cleanly)
 - [ ] ⍝« command syntax (log save, etc.)
 

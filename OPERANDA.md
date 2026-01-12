@@ -18,7 +18,14 @@ Key mappings config implemented. Leader key system (`Ctrl+]`) for gritt commands
 - Implemented leader key (`Ctrl+]`) for gritt commands - keeps all keys free for APL
 - Removed `?` direct binding (it's roll/deal in APL)
 - Removed F1/F2 direct bindings (F1 is for APL docs)
-- Commands now behind leader: `C-] ?` for keys, `C-] d` for debug
+- Commands now behind leader: `C-] ?` for keys, `C-] d` for debug, `C-] q` for quit
+- Ctrl+C shows vim-style "Type C-] q to quit" hint
+- Quit confirmation dialog (y/n)
+- Dyalog orange (#ff6600) for all UI borders
+- Fixed cellbuf compositor to handle ANSI-styled pane content
+- Fixed input routing - focused panes consume all keys
+- Fixed tmux session sizing (resize-window after creation)
+- Test reports now show ANSI colors, clickable test→snapshot links
 
 ### Project Structure
 
