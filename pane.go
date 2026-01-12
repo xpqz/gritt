@@ -4,7 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/cellbuf"
 )
 
 // DragMode represents the current drag operation
@@ -232,22 +232,16 @@ func (p *Pane) StopDrag() {
 
 // Render renders the pane with borders and content
 func (p *Pane) Render() string {
-	// Border characters
+	// Border characters - double for focused, single for unfocused
 	var tl, tr, bl, br, h, v string
-	var borderColor lipgloss.Color
 
 	if p.Focused {
 		tl, tr, bl, br = "╔", "╗", "╚", "╝"
 		h, v = "═", "║"
-		borderColor = lipgloss.Color("63") // Bright blue
 	} else {
 		tl, tr, bl, br = "┌", "┐", "└", "┘"
 		h, v = "─", "│"
-		borderColor = lipgloss.Color("240") // Gray
 	}
-
-	borderStyle := lipgloss.NewStyle().Foreground(borderColor)
-	titleStyle := lipgloss.NewStyle().Foreground(borderColor).Bold(true)
 
 	contentW := p.Width - 2
 	contentH := p.Height - 2
@@ -276,16 +270,13 @@ func (p *Pane) Render() string {
 	titleLen := len([]rune(title))
 	padding := contentW - titleLen - 2
 	if padding < 0 {
-		// Truncate title
 		runes := []rune(title)
 		if len(runes) > contentW-2 {
 			title = string(runes[:contentW-2])
 		}
 		padding = 0
 	}
-	topBar := borderStyle.Render(tl) +
-		titleStyle.Render(" "+title+" ") +
-		borderStyle.Render(strings.Repeat(h, padding)+tr)
+	topBar := tl + " " + title + " " + strings.Repeat(h, padding) + tr
 	lines = append(lines, topBar)
 
 	// Content lines
@@ -294,18 +285,17 @@ func (p *Pane) Render() string {
 		if i < len(contentLines) {
 			line = contentLines[i]
 		}
-		// Pad to width
 		lineRunes := []rune(line)
 		if len(lineRunes) < contentW {
 			line = line + strings.Repeat(" ", contentW-len(lineRunes))
 		} else if len(lineRunes) > contentW {
 			line = string(lineRunes[:contentW])
 		}
-		lines = append(lines, borderStyle.Render(v)+line+borderStyle.Render(v))
+		lines = append(lines, v+line+v)
 	}
 
 	// Bottom border
-	lines = append(lines, borderStyle.Render(bl+strings.Repeat(h, contentW)+br))
+	lines = append(lines, bl+strings.Repeat(h, contentW)+br)
 
 	return strings.Join(lines, "\n")
 }
@@ -470,80 +460,43 @@ func (pm *PaneManager) Render(base string) string {
 		return base
 	}
 
-	// Convert base to grid
-	grid := stringToGrid(base, pm.screenW, pm.screenH)
+	// Parse base to get actual dimensions
+	baseLines := strings.Split(base, "\n")
+	baseH := len(baseLines)
+	baseW := pm.screenW
 
-	// Render panes in z-order (lowest first)
+	// Create base buffer from the session content
+	buf := cellbuf.NewBuffer(baseW, baseH)
+	cellbuf.SetContent(buf, base)
+
+	// Overlay each pane in z-order (lowest first)
 	for _, id := range pm.zOrder {
 		pane := pm.panes[id]
-		if pane != nil {
-			paneStr := pane.Render()
-			overlayOnGrid(grid, paneStr, pane.X, pane.Y)
-		}
-	}
-
-	return gridToString(grid)
-}
-
-// stringToGrid converts a rendered string to a 2D rune grid
-func stringToGrid(s string, w, h int) [][]rune {
-	grid := make([][]rune, h)
-	for i := range grid {
-		grid[i] = make([]rune, w)
-		for j := range grid[i] {
-			grid[i][j] = ' '
-		}
-	}
-
-	lines := strings.Split(s, "\n")
-	for y, line := range lines {
-		if y >= h {
-			break
-		}
-		x := 0
-		for _, r := range line {
-			if x >= w {
-				break
-			}
-			grid[y][x] = r
-			x++
-		}
-	}
-
-	return grid
-}
-
-// overlayOnGrid paints a string onto the grid at the given position
-func overlayOnGrid(grid [][]rune, s string, x, y int) {
-	lines := strings.Split(s, "\n")
-	h := len(grid)
-	w := 0
-	if h > 0 {
-		w = len(grid[0])
-	}
-
-	for dy, line := range lines {
-		gy := y + dy
-		if gy < 0 || gy >= h {
+		if pane == nil {
 			continue
 		}
-		gx := x
-		for _, r := range line {
-			if gx >= 0 && gx < w {
-				grid[gy][gx] = r
+
+		// Create a buffer for the pane content
+		paneStr := pane.Render()
+		paneLines := strings.Split(paneStr, "\n")
+
+		// Copy pane content to main buffer at pane position
+		for dy, line := range paneLines {
+			y := pane.Y + dy
+			if y < 0 || y >= baseH {
+				continue
 			}
-			gx++
+			x := pane.X
+			for _, r := range line {
+				if x >= 0 && x < baseW {
+					buf.SetCell(x, y, cellbuf.NewCell(r))
+				}
+				x++
+			}
 		}
 	}
-}
 
-// gridToString converts a 2D rune grid back to a string
-func gridToString(grid [][]rune) string {
-	lines := make([]string, len(grid))
-	for i, row := range grid {
-		lines[i] = string(row)
-	}
-	return strings.Join(lines, "\n")
+	return cellbuf.Render(buf)
 }
 
 // zoneToDragMode converts a hit zone to a drag mode

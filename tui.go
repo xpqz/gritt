@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/help"
+	"github.com/charmbracelet/bubbles/key"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/lipgloss/v2"
 	"gritt/ride"
 )
 
@@ -42,6 +44,10 @@ type Model struct {
 	panes     *PaneManager
 	debugPane *DebugPane // Keep reference to update log
 
+	// Help
+	help help.Model
+	keys KeyMap
+
 	// Terminal dimensions
 	width  int
 	height int
@@ -76,6 +82,8 @@ func NewModel(client *ride.Client) Model {
 		ready:  true, // Handshake already completed
 		lines:  []Line{{Text: aplIndent}},
 		panes:  NewPaneManager(80, 24), // Will be updated on WindowSizeMsg
+		help:   help.New(),
+		keys:   DefaultKeyMap,
 	}
 	m.cursorCol = len(aplIndent)
 	m.log("Connected, ready for input")
@@ -123,25 +131,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// Global shortcuts (always work regardless of focus)
-	switch msg.Type {
-	case tea.KeyCtrlC:
+	switch {
+	case key.Matches(msg, m.keys.Quit):
 		return m, tea.Quit
 
-	case tea.KeyF12:
+	case key.Matches(msg, m.keys.ToggleDebug):
 		m.toggleDebugPane()
 		return m, nil
 
-	case tea.KeyTab:
+	case key.Matches(msg, m.keys.CyclePane):
 		if m.panes.HasPanes() {
 			m.panes.FocusNext()
 		}
 		return m, nil
 
-	case tea.KeyEsc:
-		// Close focused pane (if any)
+	case key.Matches(msg, m.keys.ClosePane):
 		if fp := m.panes.FocusedPane(); fp != nil {
 			m.panes.Remove(fp.ID)
 		}
+		return m, nil
+
+	case key.Matches(msg, m.keys.Help):
+		m.help.ShowAll = !m.help.ShowAll
 		return m, nil
 	}
 
@@ -161,9 +172,15 @@ func (m *Model) toggleDebugPane() {
 		m.panes.Remove("debug")
 		m.debugPane = nil
 	} else {
-		// Create debug pane on the right side
+		// Calculate available height (account for help line and session border)
+		helpHeight := 1
+		if m.help.ShowAll {
+			helpHeight = 4
+		}
+		availH := m.height - helpHeight - 2 // -2 for session top/bottom borders
+
 		paneW := 50
-		paneH := m.height - 4
+		paneH := availH - 2 // Leave margin
 		if paneH < 10 {
 			paneH = 10
 		}
@@ -520,14 +537,26 @@ func (m Model) View() string {
 		h = 24
 	}
 
+	// Reserve space for help line
+	helpHeight := 1
+	if m.help.ShowAll {
+		helpHeight = 4 // More space for full help
+	}
+	mainH := h - helpHeight
+
 	// Render base session
-	base := m.viewSession(w, h)
+	base := m.viewSession(w, mainH)
 
 	// Composite floating panes over session
 	if m.panes.HasPanes() {
-		return m.panes.Render(base)
+		base = m.panes.Render(base)
 	}
-	return base
+
+	// Add help at bottom
+	m.help.Width = w
+	helpView := m.help.View(m.keys)
+
+	return base + "\n" + helpView
 }
 
 func (m Model) viewSession(w, h int) string {
