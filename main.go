@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/colorprofile"
@@ -17,6 +18,7 @@ func main() {
 	logFile := flag.String("log", "", "Log protocol messages to file")
 	expr := flag.String("e", "", "Execute expression and exit")
 	stdin := flag.Bool("stdin", false, "Read expressions from stdin")
+	link := flag.String("link", "", "Link directory (path or ns:path)")
 	flag.Parse()
 
 	// Set up logging if requested
@@ -41,6 +43,9 @@ func main() {
 			log.Fatal(err)
 		}
 		defer client.Close()
+		if *link != "" {
+			runLink(client, *link)
+		}
 		runExpr(client, *expr)
 		return
 	}
@@ -50,6 +55,9 @@ func main() {
 			log.Fatal(err)
 		}
 		defer client.Close()
+		if *link != "" {
+			runLink(client, *link)
+		}
 		scanner := bufio.NewScanner(os.Stdin)
 		for scanner.Scan() {
 			runExpr(client, scanner.Text())
@@ -74,6 +82,21 @@ func main() {
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+// runLink runs ]link.create with the given spec
+func runLink(client *ride.Client, spec string) {
+	var cmd string
+	if idx := strings.Index(spec, ":"); idx >= 0 {
+		// ns:path -> ]link.create ns path
+		ns := spec[:idx]
+		path := spec[idx+1:]
+		cmd = fmt.Sprintf("]link.create %s %s", ns, path)
+	} else {
+		// path -> ]link.create path
+		cmd = fmt.Sprintf("]link.create %s", spec)
+	}
+	runExpr(client, cmd)
 }
 
 // runExpr executes an expression and prints the result

@@ -117,6 +117,26 @@ Or use the multiplexer from dyctl:
 
 Then connect gritt to port 4502.
 
+## CLI Usage
+
+```bash
+# Interactive TUI
+./gritt
+
+# Execute single expression
+./gritt -e "⍳5"
+
+# Pipe expressions from stdin
+echo "1+1" | ./gritt -stdin
+
+# Link directory before executing
+./gritt -link /path/to/src -e "MyFn 42"
+./gritt -link "#:." -e "⎕nl -3"    # Link root ns to current dir
+
+# Ephemeral Dyalog instance (starts/stops automatically)
+./apl "⍳5"
+```
+
 ## Debugging
 
 Run with protocol logging:

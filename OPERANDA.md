@@ -11,6 +11,9 @@ Tracer stack experience implemented. Protocol logging available for debugging.
 - **Protocol logging**: `-log <file>` flag logs all RIDE messages and TUI actions
 - **Adaptive colors**: Detects terminal capabilities (ANSI, ANSI256, TrueColor), uses exact #F2A74F when supported
 - **CloseWindow timing fix**: Wait for `ReplySaveChanges` before sending `CloseWindow`
+- **Non-interactive mode**: `-e` for single expression, `-stdin` for piping
+- **Link support**: `-link path` or `-link ns:path` runs `]link.create` before executing
+- **apl script**: Ephemeral Dyalog instance for one-shot execution
 - **28 passing tests**: Including full X→Y→Z tracer scenario
 
 ### Key Files Changed
@@ -27,8 +30,9 @@ Tracer stack experience implemented. Protocol logging available for debugging.
 
 ```
 gritt/
-├── main.go              # Entry point, color profile detection
+├── main.go              # Entry point, CLI flags, color detection
 ├── tui.go               # bubbletea TUI - Model, Update, View
+├── apl                  # Shell script for ephemeral Dyalog
 ├── pane.go              # Floating pane system, cellbuf compositor
 ├── editor.go            # EditorWindow struct
 ├── editor_pane.go       # Editor/tracer pane content
@@ -60,6 +64,11 @@ go test -v -run TestTUI
 # Manual testing
 RIDE_INIT=SERVE:*:4502 dyalog +s -q
 ./gritt
+
+# Non-interactive
+./gritt -e "⍳5"
+echo "1+1" | ./gritt -stdin
+./apl "2+2"  # ephemeral Dyalog
 ```
 
 ### Key Bindings (current)

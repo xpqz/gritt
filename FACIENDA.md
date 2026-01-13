@@ -132,3 +132,8 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Protocol logging (-log flag for RIDE messages and TUI actions)
 - [x] Adaptive color detection (ANSI/ANSI256/TrueColor, exact #F2A74F when supported)
 - [x] 28 passing tests including X→Y→Z nested tracer scenario
+
+### CLI & Scripting
+- [x] Non-interactive mode: -e for single expression, -stdin for piping
+- [x] Link support: -link path or -link ns:path runs ]link.create before executing
+- [x] apl script: ephemeral Dyalog instance for one-shot execution
