@@ -1,6 +1,7 @@
 # FACIENDA - Things to be done
 
 ## Future Enhancements
+- [ ] Protocol audit: evaluate all unsupported RIDE messages, prioritize by importance
 - [ ] Connection resilience: on unexpected Dyalog death, keep gritt alive with session buffer intact, show disconnected state, allow reconnect (`)off` intentional shutdown should still exit cleanly)
 - [ ] ⍝« command syntax (log save, etc.)
 - [ ] Clipboard support (Ctrl+C copy, Ctrl+V paste)
