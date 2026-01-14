@@ -220,6 +220,43 @@ func TestTUI(t *testing.T) {
 		return !runner.Contains("Commands")
 	})
 
+	// Test: Pane move mode
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("d") // Open debug pane first
+	runner.Sleep(300 * time.Millisecond)
+
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("m") // Enter move mode
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Pane move mode active")
+
+	runner.Test("C-] m enters pane move mode", func() bool {
+		return runner.Contains("MOVE")
+	})
+
+	// Move pane with arrow keys
+	runner.SendKeys("Up", "Up", "Left", "Left")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("After moving pane")
+
+	runner.Test("Arrow keys move pane in move mode", func() bool {
+		return runner.Contains("MOVE") // Still in move mode
+	})
+
+	// Exit move mode
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
+	runner.Test("Escape exits pane move mode", func() bool {
+		return !runner.Contains("MOVE")
+	})
+
+	// Close the debug pane
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
 	// Test: Ctrl+C shows quit hint
 	runner.SendKeys("C-c")
 	runner.Sleep(200 * time.Millisecond)
