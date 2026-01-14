@@ -280,6 +280,77 @@ func TestTUI(t *testing.T) {
 	runner.SendKeys("Escape")
 	runner.Sleep(200 * time.Millisecond)
 
+	// Test: Backtick mode for APL symbols
+	runner.SendKeys("`")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Backtick mode active")
+
+	runner.Test("Backtick activates APL symbol mode", func() bool {
+		return runner.Contains("APL symbol")
+	})
+
+	runner.SendKeys("i") // Should insert ⍳
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("After backtick-i (iota)")
+
+	runner.Test("Backtick-i inserts iota", func() bool {
+		return runner.Contains("⍳")
+	})
+
+	// Test: Symbol search
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys(":")
+	runner.Sleep(300 * time.Millisecond)
+	runner.SendText("symbols")
+	runner.Sleep(200 * time.Millisecond)
+	runner.SendKeys("Enter")
+	runner.Sleep(300 * time.Millisecond)
+	runner.Snapshot("Symbol search pane")
+
+	runner.Test("Symbol search opens", func() bool {
+		return runner.Contains("APL Symbols")
+	})
+
+	// Search for "rho"
+	runner.SendText("rho")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Symbol search filtered to rho")
+
+	runner.Test("Symbol search filters by name", func() bool {
+		return runner.Contains("⍴")
+	})
+
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
+	// Test: APLcart
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys(":")
+	runner.Sleep(300 * time.Millisecond)
+	runner.SendText("aplcart")
+	runner.Sleep(200 * time.Millisecond)
+	runner.SendKeys("Enter")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("APLcart pane loading")
+
+	runner.Test("APLcart opens", func() bool {
+		return runner.Contains("APLcart")
+	})
+
+	// Wait for data to load
+	runner.Sleep(3 * time.Second)
+	runner.Snapshot("APLcart loaded")
+
+	runner.Test("APLcart loads data", func() bool {
+		// Should show count or entries
+		return runner.Contains("(") || runner.Contains("⍬")
+	})
+
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
 	// Test: Ctrl+C shows quit hint
 	runner.SendKeys("C-c")
 	runner.Sleep(200 * time.Millisecond)

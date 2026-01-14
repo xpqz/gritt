@@ -29,9 +29,13 @@
 - [ ] StringDialog (text input)
 - [ ] ReplyOptionsDialog/ReplyStringDialog
 
-## Phase 6: Polish
+## Phase 6: APL Input - DONE
+- [x] Backtick prefix for APL symbols (`` `a `` → `⍺`, `` `r `` → `⍴`, etc.)
+- [x] Symbol search modal - search by name ("iota", "rho", "shape", "each")
+- [x] APLcart modal - search idioms from aplcart.info
+
+## Phase 7: Polish
 - [ ] Syntax highlighting for APL
-- [ ] APL keyboard input layer (backtick prefix?)
 - [ ] Input history (beyond session - persist across runs?)
 - [ ] Status bar (connection info, workspace name from UpdateSessionCaption)
 - [ ] Better error display (HadError message handling)
@@ -156,4 +160,9 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Command palette (C-] :) - searchable command list
 - [x] Pane move mode (C-] m) - arrows move, shift+arrows resize
 - [x] Save session command (via command palette, prompts for filename)
-- [x] 39 passing tests
+
+### APL Input
+- [x] Backtick prefix for APL symbols (`` `i `` → `⍳`, `` `r `` → `⍴`, etc.)
+- [x] Symbol search (C-] : → symbols) - search by name
+- [x] APLcart integration (C-] : → aplcart) - search 3000+ idioms
+- [x] 44 passing tests

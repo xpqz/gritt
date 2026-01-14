@@ -90,6 +90,9 @@ type Model struct {
 	savePromptActive   bool
 	savePromptFilename string
 
+	// Backtick mode for APL symbol input
+	backtickActive bool
+
 	// Terminal dimensions
 	width  int
 	height int
@@ -225,6 +228,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.MouseMsg:
 		return m.handleMouse(msg)
 
+	case APLcartLoaded:
+		if pane := m.panes.Get("aplcart"); pane != nil {
+			if ac, ok := pane.Content.(*APLcart); ok {
+				ac.SetData(msg.Entries, msg.Err)
+			}
+		}
+		return m, nil
+
 	case rideEvent:
 		return m.handleRide(msg)
 	}
@@ -232,6 +243,32 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle backtick mode - insert APL symbol
+	if m.backtickActive {
+		m.backtickActive = false
+		if len(msg.Runes) > 0 {
+			r := msg.Runes[0]
+			if sym, ok := backtickMap[r]; ok {
+				// Insert symbol at cursor
+				m.insertChar(sym)
+				return m, nil
+			}
+			// Unknown key - insert the backtick and the key
+			m.insertChar('`')
+			m.insertChar(r)
+			return m, nil
+		}
+		// Special key after backtick - just insert backtick
+		m.insertChar('`')
+		return m, nil
+	}
+
+	// Check for backtick
+	if len(msg.Runes) == 1 && msg.Runes[0] == '`' {
+		m.backtickActive = true
+		return m, nil
+	}
+
 	// Handle quit confirmation
 	if m.confirmQuit {
 		m.confirmQuit = false
@@ -391,6 +428,27 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			cp.SelectedAction = ""
 			m.panes.Remove("commands")
 			return (&m).dispatchCommand(action)
+		}
+
+		// Check if symbol search selected a symbol
+		if ss, ok := fp.Content.(*SymbolSearch); ok && ss.SelectedSymbol != 0 {
+			sym := ss.SelectedSymbol
+			ss.SelectedSymbol = 0
+			m.panes.Remove("symbols")
+			m.insertChar(sym)
+			return m, nil
+		}
+
+		// Check if APLcart selected a syntax
+		if ac, ok := fp.Content.(*APLcart); ok && ac.SelectedSyntax != "" {
+			syntax := ac.SelectedSyntax
+			ac.SelectedSyntax = ""
+			m.panes.Remove("aplcart")
+			// Insert the syntax
+			for _, r := range syntax {
+				m.insertChar(r)
+			}
+			return m, nil
 		}
 
 		return m, nil // Focused pane consumes all input
@@ -921,6 +979,10 @@ func (m *Model) dispatchCommand(action string) (tea.Model, tea.Cmd) {
 		m.toggleStackPane()
 	case "keys":
 		m.toggleKeysPane()
+	case "symbols":
+		m.openSymbolSearch()
+	case "aplcart":
+		return m.openAPLcart()
 	case "reconnect":
 		return m.reconnect()
 	case "save":
@@ -929,6 +991,47 @@ func (m *Model) dispatchCommand(action string) (tea.Model, tea.Cmd) {
 		m.confirmQuit = true
 	}
 	return *m, nil
+}
+
+func (m *Model) openSymbolSearch() {
+	if m.panes.Get("symbols") != nil {
+		m.panes.Remove("symbols")
+		return
+	}
+
+	ss := NewSymbolSearch()
+
+	// Position: center
+	paneW := 50
+	paneH := min(20, m.height-4)
+	paneX := (m.width - paneW) / 2
+	paneY := (m.height - paneH) / 2
+
+	pane := NewPane("symbols", ss, paneX, paneY, paneW, paneH)
+	m.panes.Add(pane)
+	m.panes.Focus("symbols")
+}
+
+func (m *Model) openAPLcart() (tea.Model, tea.Cmd) {
+	if m.panes.Get("aplcart") != nil {
+		m.panes.Remove("aplcart")
+		return *m, nil
+	}
+
+	ac := NewAPLcart()
+
+	// Position: center, larger
+	paneW := 70
+	paneH := min(25, m.height-4)
+	paneX := (m.width - paneW) / 2
+	paneY := (m.height - paneH) / 2
+
+	pane := NewPane("aplcart", ac, paneX, paneY, paneW, paneH)
+	m.panes.Add(pane)
+	m.panes.Focus("aplcart")
+
+	// Start fetching data
+	return *m, FetchAPLcart
 }
 
 func (m *Model) saveSession() {
@@ -966,6 +1069,8 @@ func (m *Model) openCommandPalette() {
 		{Name: "debug", Help: "Toggle debug pane"},
 		{Name: "stack", Help: "Toggle stack pane"},
 		{Name: "keys", Help: "Show key bindings"},
+		{Name: "symbols", Help: "Search APL symbols"},
+		{Name: "aplcart", Help: "Search APLcart idioms"},
 		{Name: "reconnect", Help: "Reconnect to Dyalog"},
 		{Name: "save", Help: "Save session to file"},
 		{Name: "quit", Help: "Quit gritt"},
@@ -1231,6 +1336,9 @@ func (m Model) View() string {
 	} else if m.savePromptActive {
 		promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
 		helpView = promptStyle.Render("Save as: ") + m.savePromptFilename + cursorStyle.Render(" ")
+	} else if m.backtickActive {
+		backtickStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("207")).Bold(true)
+		helpView = backtickStyle.Render("` APL symbol...")
 	} else {
 		helpView = m.help.View(m.keys)
 	}

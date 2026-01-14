@@ -7,6 +7,7 @@ Pronounced like "grit" (G from Go + German "Ritt" = ride).
 ## Features
 
 - Full TUI with floating panes for editors, tracer, debug info
+- **APL input**: backtick prefix (`` `i `` → `⍳`), symbol search, APLcart integration
 - Command palette for quick access to all commands
 - Connection resilience - stays alive on disconnect, allows reconnect
 - Single-expression and stdin modes for scripting
@@ -95,9 +96,25 @@ Press `C-] :` to open the command palette. Type to filter, Enter to select:
 - `debug` - Toggle debug pane
 - `stack` - Toggle stack pane
 - `keys` - Show key bindings
+- `symbols` - Search APL symbols by name
+- `aplcart` - Search APLcart idioms
 - `reconnect` - Reconnect to Dyalog
 - `save` - Save session to file
 - `quit` - Quit gritt
+
+### APL Input
+
+**Backtick prefix**: Press `` ` `` then a key to insert APL symbols:
+- `` `i `` → `⍳` (iota)
+- `` `r `` → `⍴` (rho)
+- `` `a `` → `⍺` (alpha)
+- `` `w `` → `⍵` (omega)
+- `` `1 `` → `¨` (each)
+- And many more...
+
+**Symbol search**: `C-] :` → type "symbols" → search by name (iota, rho, each, grade, etc.)
+
+**APLcart**: `C-] :` → type "aplcart" → search 3000+ APL idioms from aplcart.info
 
 ## Configuration
 

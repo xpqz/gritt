@@ -2,24 +2,26 @@
 
 ## Active Work
 
-Connection resilience, command palette, and pane control complete. 39 passing tests.
+APL input features complete. 44 passing tests.
 
 ### Recent Changes
 
-- **Connection resilience**: Disconnection detection, red border + [disconnected] indicator, C-] r to reconnect, session preserved
-- **Command palette**: C-] : opens searchable command list (debug, stack, keys, reconnect, save, quit)
+- **Backtick mode**: Press `` ` `` then key to insert APL symbol (`` `i `` → `⍳`, `` `r `` → `⍴`)
+- **Symbol search**: C-] : → "symbols" to search APL symbols by name
+- **APLcart**: C-] : → "aplcart" to search 3000+ APL idioms (fetches from GitHub)
+- **Command palette**: C-] : opens searchable command list
 - **Pane move mode**: C-] m enters mode where arrows move pane, shift+arrows resize
-- **Save session**: Via command palette, prompts for filename with default
-- **Config robustness**: Embedded default config, renamed to gritt.json, handles missing keys gracefully
+- **Connection resilience**: Disconnection detection, red border, C-] r to reconnect
 
 ### Key Files Changed
 
 | File | Changes |
 |------|---------|
-| `tui.go` | Connection state, reconnect, pane move mode, save prompt, command dispatch |
-| `config.go` | go:embed, gritt.json paths, graceful missing keys |
-| `command_palette.go` | Simplified - returns selected action name |
-| `gritt.default.json` | Added reconnect, command_palette, pane_move_mode keys |
+| `tui.go` | Backtick mode, APL input dispatch, APLcart message handling |
+| `apl_symbols.go` | New - backtick map and symbol data |
+| `symbol_search.go` | New - searchable symbol pane |
+| `aplcart.go` | New - APLcart fetcher and pane |
+| `command_palette.go` | Added symbols and aplcart commands |
 
 ### Project Structure
 
@@ -35,10 +37,13 @@ gritt/
 ├── debug_pane.go        # Debug log pane
 ├── keys_pane.go         # Key mappings pane
 ├── command_palette.go   # Searchable command list pane
+├── apl_symbols.go       # Backtick map and symbol definitions
+├── symbol_search.go     # Symbol search pane
+├── aplcart.go           # APLcart integration
 ├── keys.go              # KeyMap struct definition
 ├── config.go            # Config loading (with embedded default)
 ├── gritt.default.json   # Default key bindings (embedded at build)
-├── tui_test.go          # TUI tests (39 tests)
+├── tui_test.go          # TUI tests (44 tests)
 ├── uitest/              # Test framework (tmux, HTML reports)
 ├── ride/
 │   ├── protocol.go      # Wire format
