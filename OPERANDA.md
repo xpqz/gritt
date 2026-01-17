@@ -1,10 +1,31 @@
 # OPERANDA - Current State
 
+## Just Fixed (Critical Bugs)
+
+**Bug #1: Escape in edit mode was closing window instead of returning to tracer**
+- Root cause: Global `ClosePane` handler (bound to Escape) was intercepting the key BEFORE the pane's `HandleKey`
+- The global handler in `tui.go` always called `closeEditor` for tracer panes without checking edit mode
+- Fix: Added check in `ClosePane` handler - if tracer is in edit mode, `break` to let pane handle it
+- File: `tui.go:415-418`
+
+**Bug #2: Breakpoints were being cleared when leaving tracer**
+- Root cause: `ToggleStop` only set `Modified=true` for non-debugger windows
+- This meant tracer breakpoints weren't saved on close (since `Modified=false` skips `saveEditor`)
+- Fix: Always set `Modified=true` when breakpoints change, regardless of window type
+- File: `editor.go:130-143`
+
+**Also fixed: Code didn't compile**
+- `matchKey` helper was being called but never defined
+- Added `matchKey(r rune, configKey string) bool` method to `EditorPane`
+- File: `editor_pane.go:549-555`
+
+---
+
 ## Active Work: Tracer & Connection Resilience
 
 Phase 4 tracer work complete. Connection resilience improved with automatic window restoration.
 
-### Just Completed (this session)
+### Completed Earlier (this session)
 
 **Breakpoints:**
 - Toggle breakpoint: `C-] b` (on current line in editor/tracer)
@@ -51,7 +72,7 @@ Phase 4 tracer work complete. Connection resilience improved with automatic wind
 
 | File | Changes |
 |------|---------|
-| `editor.go` | `ToggleStop` sets `Modified` for non-debugger windows |
+| `editor.go` | `ToggleStop` always sets `Modified` (breakpoints persist) |
 | `editor_pane.go` | Tracer mode key handling, edit mode toggle, `InTracerMode()` |
 | `tui.go` | `GetWindowLayout` on connect, `closeAllWindows`, tracer controls |
 | `command_palette.go` | Scrolling support, rendering fixes |

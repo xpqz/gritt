@@ -16,6 +16,9 @@ type EditorPane struct {
 	scrollY  int  // First visible line
 	editMode bool // True when tracer is in edit mode (Shift+Enter to enable)
 
+	// Tracer key bindings (single characters)
+	tracerKeys TracerKeysConfig
+
 	// Callbacks
 	onSave  func()
 	onClose func()
@@ -37,11 +40,12 @@ type EditorPane struct {
 }
 
 // NewEditorPane creates an editor pane for the given window
-func NewEditorPane(w *EditorWindow, onSave, onClose func()) *EditorPane {
+func NewEditorPane(w *EditorWindow, tracerKeys TracerKeysConfig, onSave, onClose func()) *EditorPane {
 	return &EditorPane{
-		window:  w,
-		onSave:  onSave,
-		onClose: onClose,
+		window:     w,
+		tracerKeys: tracerKeys,
+		onSave:     onSave,
+		onClose:    onClose,
 		cursorStyle: lipgloss.NewStyle().
 			Background(lipgloss.Color("255")).
 			Foreground(lipgloss.Color("0")),
@@ -215,36 +219,37 @@ func (e *EditorPane) HandleKey(msg tea.KeyMsg) bool {
 			}
 		case tea.KeyRunes:
 			if len(msg.Runes) == 1 {
-				switch msg.Runes[0] {
-				case 'i': // Step into
+				r := msg.Runes[0]
+				switch {
+				case e.matchKey(r, e.tracerKeys.StepInto):
 					if e.onStepInto != nil {
 						e.onStepInto()
 					}
-				case 'n': // Next (step over)
+				case e.matchKey(r, e.tracerKeys.StepOver):
 					if e.onStepOver != nil {
 						e.onStepOver()
 					}
-				case 'o': // Step out
+				case e.matchKey(r, e.tracerKeys.StepOut):
 					if e.onStepOut != nil {
 						e.onStepOut()
 					}
-				case 'c': // Continue
+				case e.matchKey(r, e.tracerKeys.Continue):
 					if e.onContinue != nil {
 						e.onContinue()
 					}
-				case 'r': // Resume all
+				case e.matchKey(r, e.tracerKeys.ResumeAll):
 					if e.onResumeAll != nil {
 						e.onResumeAll()
 					}
-				case 'p': // Previous (backward)
+				case e.matchKey(r, e.tracerKeys.Backward):
 					if e.onBackward != nil {
 						e.onBackward()
 					}
-				case 'f': // Forward (skip)
+				case e.matchKey(r, e.tracerKeys.Forward):
 					if e.onForward != nil {
 						e.onForward()
 					}
-				case 'e': // Edit mode
+				case e.matchKey(r, e.tracerKeys.EditMode):
 					e.editMode = true
 				default:
 					return false
@@ -258,8 +263,8 @@ func (e *EditorPane) HandleKey(msg tea.KeyMsg) bool {
 		return true
 	}
 
-	// Read-only mode (non-tracer read-only windows)
-	if e.window.ReadOnly {
+	// Read-only mode (non-tracer read-only windows, but NOT tracer in edit mode)
+	if e.window.ReadOnly && !e.editMode {
 		switch msg.Type {
 		case tea.KeyUp:
 			e.cursorUp()
@@ -308,11 +313,9 @@ func (e *EditorPane) HandleKey(msg tea.KeyMsg) bool {
 			e.onSave()
 		}
 	case tea.KeyEscape:
-		// If in edit mode of a tracer, exit edit mode (return to tracer)
+		// If in edit mode of a tracer, just exit edit mode (don't save yet)
+		// Changes stay pending until the window actually closes
 		if e.editMode && e.window.Debugger {
-			if e.onSave != nil {
-				e.onSave()
-			}
 			e.editMode = false
 		} else if e.onClose != nil {
 			e.onClose()
@@ -539,4 +542,12 @@ func (e *EditorPane) SetTracerCallbacks(cb TracerCallbacks) {
 	e.onResumeAll = cb.ResumeAll
 	e.onBackward = cb.Backward
 	e.onForward = cb.Forward
+}
+
+// matchKey checks if a rune matches a single-character config key
+func (e *EditorPane) matchKey(r rune, configKey string) bool {
+	if configKey == "" {
+		return false
+	}
+	return string(r) == configKey
 }

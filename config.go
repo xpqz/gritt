@@ -14,7 +14,20 @@ var defaultConfigJSON []byte
 
 // Config holds all gritt configuration
 type Config struct {
-	Keys KeyMapConfig `json:"keys"`
+	Keys       KeyMapConfig     `json:"keys"`
+	TracerKeys TracerKeysConfig `json:"tracer_keys"`
+}
+
+// TracerKeysConfig defines single-key bindings for tracer mode
+type TracerKeysConfig struct {
+	StepOver  string `json:"step_over"`
+	StepInto  string `json:"step_into"`
+	StepOut   string `json:"step_out"`
+	Continue  string `json:"continue"`
+	ResumeAll string `json:"resume_all"`
+	Backward  string `json:"backward"`
+	Forward   string `json:"forward"`
+	EditMode  string `json:"edit_mode"`
 }
 
 // KeyMapConfig defines key bindings in config file format

@@ -77,8 +77,9 @@ type Model struct {
 	tracerCurrent int   // Currently displayed tracer token (0 = none)
 
 	// Help
-	help help.Model
-	keys KeyMap
+	help   help.Model
+	keys   KeyMap
+	config Config
 
 	// Leader key state
 	leaderActive bool
@@ -122,6 +123,7 @@ func NewModel(client *ride.Client, addr string, logFile io.Writer, profile color
 		logFile:   logFile,
 		panes:     NewPaneManager(80, 24), // Will be updated on WindowSizeMsg
 		editors:   make(map[int]*EditorWindow),
+		config:    cfg,
 		help:      help.New(),
 		keys:      cfg.ToKeyMap(),
 	}
@@ -410,6 +412,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case key.Matches(msg, m.keys.ClosePane):
 		if fp := m.panes.FocusedPane(); fp != nil {
 			if fp.ID == "tracer" {
+				// Check if tracer is in edit mode - if so, let the pane handle it
+				if ep, ok := fp.Content.(*EditorPane); ok && ep.editMode {
+					// Don't close - fall through to pane's HandleKey
+					break
+				}
 				// Close current tracer - pops the stack
 				if m.tracerCurrent != 0 {
 					m.closeEditor(m.tracerCurrent)
@@ -1021,7 +1028,7 @@ func (m *Model) showTracer(token int) {
 		}
 	} else {
 		// Create tracer pane
-		editorPane := NewEditorPane(w,
+		editorPane := NewEditorPane(w, m.config.TracerKeys,
 			func() { m.saveEditor(m.tracerCurrent) },
 			func() { m.closeEditor(m.tracerCurrent) },
 		)
@@ -1099,6 +1106,19 @@ func (m *Model) toggleStackPane() {
 	pane := NewPane("stack", stackPane, paneX, paneY, paneW, paneH)
 	m.panes.Add(pane)
 	m.panes.Focus("stack")
+}
+
+// isTracerFocused returns true if the focused pane is a tracer in trace mode (not edit mode)
+func (m *Model) isTracerFocused() bool {
+	fp := m.panes.FocusedPane()
+	if fp == nil {
+		return false
+	}
+	ep, ok := fp.Content.(*EditorPane)
+	if !ok {
+		return false
+	}
+	return ep.InTracerMode()
 }
 
 // toggleBreakpoint toggles a breakpoint on the current line in the focused editor/tracer
@@ -1354,7 +1374,7 @@ func (m Model) handleRide(ev rideEvent) (tea.Model, tea.Cmd) {
 		} else {
 			// Regular editor - create pane as before
 			token := w.Token
-			editorPane := NewEditorPane(w,
+			editorPane := NewEditorPane(w, m.config.TracerKeys,
 				func() { m.saveEditor(token) },
 				func() { m.closeEditor(token) },
 			)
@@ -1516,6 +1536,9 @@ func (m Model) View() string {
 	} else if m.backtickActive {
 		backtickStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("207")).Bold(true)
 		helpView = backtickStyle.Render("` APL symbol...")
+	} else if m.isTracerFocused() {
+		tracerStyle := lipgloss.NewStyle().Foreground(DyalogOrange)
+		helpView = tracerStyle.Render("n next • i into • o out • c continue • p back • f forward • e edit • esc close")
 	} else {
 		helpView = m.help.View(m.keys)
 	}

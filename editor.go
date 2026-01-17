@@ -126,22 +126,18 @@ func (w *EditorWindow) HasStop(line int) bool {
 }
 
 // ToggleStop adds or removes a breakpoint on the given line.
-// For editor windows (not tracers), this also sets Modified so breakpoints are saved.
+// Always sets Modified so breakpoints are saved when the window closes.
 func (w *EditorWindow) ToggleStop(line int) {
 	// Check if already present
 	for i, s := range w.Stop {
 		if s == line {
 			// Remove it
 			w.Stop = append(w.Stop[:i], w.Stop[i+1:]...)
-			if !w.Debugger {
-				w.Modified = true
-			}
+			w.Modified = true
 			return
 		}
 	}
 	// Not present - add it
 	w.Stop = append(w.Stop, line)
-	if !w.Debugger {
-		w.Modified = true
-	}
+	w.Modified = true
 }

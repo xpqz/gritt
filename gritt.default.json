@@ -24,5 +24,15 @@
 
     "backspace": ["backspace"],
     "delete": ["delete"]
+  },
+  "tracer_keys": {
+    "step_over": "n",
+    "step_into": "i",
+    "step_out": "o",
+    "continue": "c",
+    "resume_all": "r",
+    "backward": "p",
+    "forward": "f",
+    "edit_mode": "e"
   }
 }

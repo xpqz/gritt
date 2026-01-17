@@ -127,11 +127,55 @@ func ansi256ToHex(n int) string {
 	return fmt.Sprintf("#%02x%02x%02x", gray, gray, gray)
 }
 
+// stripANSI removes ANSI escape codes from a string
+func stripANSI(s string) string {
+	re := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+	return re.ReplaceAllString(s, "")
+}
+
+// GenerateText writes a plain text log alongside the HTML
+func (r *Report) GenerateText() (string, error) {
+	if err := os.MkdirAll(r.OutputDir, 0755); err != nil {
+		return "", fmt.Errorf("failed to create output dir: %w", err)
+	}
+
+	filename := filepath.Join(r.OutputDir, fmt.Sprintf("test-%s.txt", r.Timestamp))
+
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("=== gritt test report %s ===\n\n", r.Timestamp))
+	b.WriteString(fmt.Sprintf("Total: %d  Passed: %d  Failed: %d\n\n", len(r.Tests), r.Passed(), r.Failed()))
+
+	b.WriteString("=== TESTS ===\n")
+	for _, t := range r.Tests {
+		status := "PASS"
+		if !t.Passed {
+			status = "FAIL"
+		}
+		b.WriteString(fmt.Sprintf("[%s] %s\n", status, t.Name))
+	}
+
+	b.WriteString("\n=== SNAPSHOTS ===\n")
+	for i, snap := range r.Snapshots {
+		b.WriteString(fmt.Sprintf("\n--- [%d] %s ---\n", i, snap.Label))
+		b.WriteString(stripANSI(snap.Content))
+		b.WriteString("\n")
+	}
+
+	if err := os.WriteFile(filename, []byte(b.String()), 0644); err != nil {
+		return "", fmt.Errorf("failed to write text report: %w", err)
+	}
+
+	return filename, nil
+}
+
 // Generate writes the HTML report to disk
 func (r *Report) Generate() (string, error) {
 	if err := os.MkdirAll(r.OutputDir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create output dir: %w", err)
 	}
+
+	// Also generate text version
+	r.GenerateText()
 
 	filename := filepath.Join(r.OutputDir, fmt.Sprintf("test-%s.html", r.Timestamp))
 
