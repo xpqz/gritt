@@ -1,8 +1,61 @@
 # OPERANDA - Current State
 
-## Latest Session: Test Suite Improvements
+## Latest Session: Variables Pane Complete
 
-Comprehensive test coverage for tracer, breakpoints, and edit mode.
+Full variables pane implementation with local/all modes and visual distinction between local and outer-scope variables.
+
+### Variables Pane (C-] l)
+
+**Features:**
+- Shows variables with values in tracer or main session
+- Two modes with explicit titles: `[local]` and `[all]`
+- `~` key toggles between modes
+- **Bullet markers (•)** distinguish locals from outer-scope vars in `[all]` mode
+- `Down/Up` to select, `Enter` to open editor for variable
+- Shows "Loading..." while fetching asynchronously
+
+**Display in [all] mode:**
+```
+╔ variables [all] ════════════════╗
+║• a    = 42                      ║  ← local (declared in function header)
+║• b    = hello                   ║  ← local
+║  yvar = 123                     ║  ← from outer scope (no bullet)
+╚═════════════════════════════════╝
+```
+
+**Implementation:**
+- `locals_pane.go` - VariablesPane component with `LocalVar.IsLocal` field
+- `[local]` mode: parses function source for `name←` patterns
+- `[all]` mode: single APL query `{⎕←⍵,'=',⍕⍎⍵}¨↓⎕NL 2`
+- Parses function header (`FnName;local1;local2`) to identify locals for bullet markers
+- Uses `executeInternal` for silent queries (no session pollution)
+
+**Critical bug fix - chained callbacks:**
+- Callbacks from `executeInternal` captured stale Model references (bubbletea value semantics)
+- Fix: use single APL query instead of chaining `⎕NL 2` → values query
+- Also fixed: callback completion now preserves new query if callback starts one
+
+**Toggle behavior:**
+- C-] l focuses existing pane if already open (instead of closing)
+- Only closes if already focused
+
+**Editor title fix:**
+- Regular editors now show `[edit]` suffix (like tracers show `[tracer]`/`[edit]`)
+
+### Test Coverage (71 tests)
+
+New variables tests:
+- `Variables pane shows 'a'` / `'b'` - values displayed correctly
+- `Editor opens for variable b` - Enter key opens editor
+- `Variables pane shows [all] in title` - ~ toggles mode
+- `All mode shows bullet for locals (a, b)` - • prefix on locals
+- `All mode shows yvar without bullet` - outer-scope var has no bullet
+- `Variables pane back to [local] mode` - ~ toggles back
+- `Session variables pane shows sessionVar` - works outside tracer too
+
+---
+
+## Previous Session: Test Suite Improvements
 
 ### Changes to tui_test.go
 
@@ -109,7 +162,7 @@ Phase 4 tracer work complete. Connection resilience improved with automatic wind
 ### Testing
 
 ```bash
-# Run full test suite (54 tests)
+# Run full test suite (71 tests)
 go test -v -run TestTUI
 
 # Manual testing with protocol log
@@ -130,6 +183,7 @@ gritt/
 ├── editor.go            # EditorWindow struct (Stop, Modified, etc.)
 ├── editor_pane.go       # Editor/tracer pane (tracer mode, edit mode)
 ├── stack_pane.go        # Stack frame list pane
+├── locals_pane.go       # Variables pane (locals/all modes)
 ├── debug_pane.go        # Debug log pane
 ├── keys_pane.go         # Key mappings pane
 ├── command_palette.go   # Searchable command list pane (with scrolling)
@@ -139,7 +193,7 @@ gritt/
 ├── keys.go              # KeyMap struct definition
 ├── config.go            # Config loading (with embedded default)
 ├── gritt.default.json   # Default key bindings (embedded at build)
-├── tui_test.go          # TUI tests (54 tests)
+├── tui_test.go          # TUI tests (71 tests)
 ├── uitest/              # Test framework (tmux, HTML reports)
 ├── cmd/explore/         # Protocol exploration tool
 ├── ride/
@@ -154,5 +208,7 @@ gritt/
 
 ## Next Session
 
-1. Add tracer-specific status bar (show tracer keys when focused)
-2. Make tracer keys configurable via gritt.json
+See FACIENDA.md for TODO list. Key areas to continue:
+- Variables pane testing (stack frame updates, large values)
+- Tracer polish (bold current line, status bar)
+- Pane color consistency

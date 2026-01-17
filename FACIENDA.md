@@ -30,9 +30,17 @@
 - [x] Edit mode in tracer (e to edit, Esc to return to tracing)
 - [x] Clear stuck state command (close-all-windows via command palette)
 - [x] Automatic window restoration (GetWindowLayout on connect)
-- [ ] Variable inspection
+- [x] Variables pane (C-] l toggle, ~ for [local]/[all] mode, Enter to edit, • marks locals)
+- [ ] Test: popping stack frame in tracer should update variables pane
+- [ ] Test: large values in variables pane (e.g. `x←1000 1000⍴⍳1000×1000`) should truncate but still allow editing
+- [x] Tracer: bold the current line
 - [ ] Tracer-specific status bar (show tracer keys when focused)
 - [ ] Configurable tracer keys (currently hardcoded)
+
+## Polish
+- [ ] Symbol search rendering cleanup
+- [ ] APLcart rendering cleanup (pink → standard gray)
+- [ ] Consistent gray pane colors
 
 ## Phase 5: Dialogs
 - [ ] OptionsDialog (yes/no/cancel prompts)
@@ -167,7 +175,18 @@ RIDE handles multiline poorly. Research needed on:
 - [x] CloseAllWindows command (close-all-windows via command palette)
 - [x] Command palette scrolling support
 - [x] Protocol exploration tool (cmd/explore/)
-- [x] 63 passing tests (comprehensive breakpoint & tracer coverage)
+
+### Phase 4d: Variables Pane
+- [x] Variables pane (C-] l) - shows vars with values in tracer or session
+- [x] Two modes: `[local]` (assigned in function) vs `[all]` (all visible)
+- [x] `~` toggles between modes
+- [x] Bullet markers (•) distinguish locals from outer-scope vars in [all] mode
+- [x] Enter opens variable in editor
+- [x] Async loading with "Loading..." indicator
+- [x] `executeInternal` for silent queries (no session pollution)
+- [x] Single APL query `{⎕←⍵,'=',⍕⍎⍵}¨↓⎕NL 2` avoids callback chaining issues
+- [x] Parses function header for local declarations
+- [x] 71 passing tests
 
 ### CLI & Scripting
 - [x] Non-interactive mode: -e for single expression, -stdin for piping
@@ -196,4 +215,4 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Backtick prefix for APL symbols (`` `i `` → `⍳`, `` `r `` → `⍴`, etc.)
 - [x] Symbol search (C-] : → symbols) - search by name
 - [x] APLcart integration (C-] : → aplcart) - search 3000+ idioms
-- [x] 63 passing tests
+- [x] 71 passing tests

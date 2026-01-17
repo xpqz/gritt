@@ -6,6 +6,7 @@ import (
 	"image/color"
 	"io"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -94,6 +95,11 @@ type Model struct {
 	// Backtick mode for APL symbol input
 	backtickActive bool
 
+	// Internal queries (don't display in session)
+	internalQuery    string                   // Command text being executed internally
+	internalCallback func(outputs []string)   // Where to send results
+	internalOutputs  []string                 // Accumulated outputs for internal query
+
 	// Terminal dimensions
 	width  int
 	height int
@@ -160,6 +166,20 @@ func (m *Model) send(cmd string, args map[string]any) error {
 		m.log("Send failed, disconnected: %v", err)
 	}
 	return err
+}
+
+// executeInternal sends an Execute command that won't display in the session.
+// The callback receives the outputs when SetPromptType signals completion.
+// If a query is already pending, it's replaced (old callback won't be called).
+func (m *Model) executeInternal(code string, callback func(outputs []string)) error {
+	if m.internalQuery != "" {
+		m.log("Replacing pending internal query: %s → %s", m.internalQuery, code)
+	}
+	m.internalQuery = code
+	m.internalCallback = callback
+	m.internalOutputs = nil
+	m.log("→ Internal: %s", code)
+	return m.send("Execute", map[string]any{"text": code + "\n", "trace": 0})
 }
 
 // reconnect attempts to reconnect to the RIDE server.
@@ -361,6 +381,9 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case key.Matches(msg, m.keys.ToggleStack):
 			m.toggleStackPane()
 			return m, nil
+		case key.Matches(msg, m.keys.ToggleLocals):
+			m.toggleVariablesPane()
+			return m, nil
 		case key.Matches(msg, m.keys.ToggleBreakpoint):
 			m.toggleBreakpoint()
 			return m, nil
@@ -469,6 +492,12 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			for _, r := range syntax {
 				m.insertChar(r)
 			}
+			return m, nil
+		}
+
+		// Check if variables pane needs refresh (after mode toggle)
+		if vp, ok := fp.Content.(*VariablesPane); ok && vp.loading {
+			m.fetchVariables(vp)
 			return m, nil
 		}
 
@@ -1108,6 +1137,200 @@ func (m *Model) toggleStackPane() {
 	m.panes.Focus("stack")
 }
 
+func (m *Model) toggleVariablesPane() {
+	if p := m.panes.Get("variables"); p != nil {
+		// If already open but not focused, focus it; otherwise close
+		if m.panes.FocusedPane() == p {
+			m.panes.Remove("variables")
+		} else {
+			m.panes.Focus("variables")
+		}
+		return
+	}
+
+	// Create variables pane with callbacks
+	var varsPane *VariablesPane
+	varsPane = NewVariablesPane(
+		func(name string) {
+			// Open variable with )ed - use send not Execute to avoid race
+			m.send("Execute", map[string]any{"text": ")ed " + name + "\n", "trace": 0})
+		},
+		func(mode VarsMode) {
+			// Re-fetch when mode changes
+			m.fetchVariables(varsPane)
+		},
+	)
+
+	// Fetch variables if we're in a tracer
+	m.fetchVariables(varsPane)
+
+	// Position: right side of screen, below stack pane if present
+	paneW := 35
+	paneH := min(m.height-4, 12)
+	if paneH < 5 {
+		paneH = 5
+	}
+	paneX := m.width - paneW - 2
+	paneY := 2
+
+	// If stack pane is open, position below it
+	if stackPane := m.panes.Get("stack"); stackPane != nil {
+		paneY = stackPane.Y + stackPane.Height + 1
+	}
+
+	pane := NewPane("variables", varsPane, paneX, paneY, paneW, paneH)
+	m.panes.Add(pane)
+	m.panes.Focus("variables")
+}
+
+// fetchVariables fetches variables and populates the variables pane
+func (m *Model) fetchVariables(pane *VariablesPane) {
+	if m.client == nil {
+		pane.Clear()
+		return
+	}
+
+	pane.SetLoading(true)
+
+	// For locals mode in tracer, we can extract names from source without querying
+	if len(m.tracerStack) > 0 && pane.Mode() == VarsModeLocals {
+		w, exists := m.editors[m.tracerCurrent]
+		if !exists {
+			pane.Clear()
+			return
+		}
+
+		// Parse function source for assignments (name←)
+		var varNames []string
+		assignedVars := make(map[string]bool)
+		for _, line := range w.Text {
+			// Look for assignment pattern: name←
+			for i := 0; i < len(line); i++ {
+				// Find ← and extract preceding name
+				if i+3 <= len(line) && line[i:i+3] == "←" {
+					// Walk back to find variable name start
+					end := i
+					start := end - 1
+					for start >= 0 {
+						c := line[start]
+						if (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+							(c >= '0' && c <= '9') || c == '_' ||
+							c >= 0x80 { // Allow APL characters
+							start--
+						} else {
+							break
+						}
+					}
+					start++
+					if start < end {
+						name := line[start:end]
+						assignedVars[name] = true
+					}
+				}
+			}
+		}
+
+		if len(assignedVars) == 0 {
+			pane.Clear()
+			return
+		}
+
+		for name := range assignedVars {
+			varNames = append(varNames, name)
+		}
+		sort.Strings(varNames)
+		// In locals mode, all vars shown are local
+		m.fetchVarValuesInternal(pane, varNames, assignedVars)
+		return
+	}
+
+	// For all mode (tracer or session): query ⎕NL 2 to get variable names
+	// First, get local variable names from function header (if in tracer)
+	localVars := make(map[string]bool)
+	if len(m.tracerStack) > 0 {
+		if w, exists := m.editors[m.tracerCurrent]; exists && len(w.Text) > 0 {
+			// Parse header line: "FnName;local1;local2;..."
+			header := w.Text[0]
+			parts := strings.Split(header, ";")
+			for i := 1; i < len(parts); i++ { // Skip function name (first part)
+				local := strings.TrimSpace(parts[i])
+				if local != "" {
+					localVars[local] = true
+				}
+			}
+		}
+	}
+
+	// Single query: get names and values in one shot
+	// {⎕←⍵,'=',⍕⍎⍵}¨↓⎕NL 2 - for each name from ⎕NL 2, print name=value
+	m.executeInternal("{⎕←⍵,'=',⍕⍎⍵}¨↓⎕NL 2", func(outputs []string) {
+		var vars []LocalVar
+		for _, output := range outputs {
+			for _, line := range strings.Split(output, "\n") {
+				line = strings.TrimSpace(line)
+				if idx := strings.Index(line, "="); idx > 0 {
+					name := strings.TrimSpace(line[:idx])
+					value := strings.TrimSpace(line[idx+1:])
+					if nl := strings.Index(value, "\n"); nl != -1 {
+						value = value[:nl] + "..."
+					}
+					vars = append(vars, LocalVar{Name: name, Value: value, IsLocal: localVars[name]})
+				}
+			}
+		}
+		if len(vars) == 0 {
+			pane.Clear()
+			return
+		}
+		sort.Slice(vars, func(i, j int) bool { return vars[i].Name < vars[j].Name })
+		pane.SetVars(vars)
+	})
+}
+
+// fetchVarValuesInternal fetches all variable values in one APL query
+// locals is a set of variable names declared as local in the function header
+func (m *Model) fetchVarValuesInternal(pane *VariablesPane, names []string, locals map[string]bool) {
+	if len(names) == 0 {
+		pane.Clear()
+		return
+	}
+
+	// Build APL expression: {⎕←⍵,'=',⍕⍎⍵}¨'a' 'b' 'c'
+	// This prints each name=value on its own line
+	var quotedNames []string
+	for _, name := range names {
+		quotedNames = append(quotedNames, "'"+name+"'")
+	}
+	expr := "{⎕←⍵,'=',⍕⍎⍵}¨" + strings.Join(quotedNames, " ")
+
+	m.executeInternal(expr, func(outputs []string) {
+		// Parse name=value lines from output
+		valueMap := make(map[string]string)
+		for _, output := range outputs {
+			for _, line := range strings.Split(output, "\n") {
+				line = strings.TrimSpace(line)
+				if idx := strings.Index(line, "="); idx > 0 {
+					name := strings.TrimSpace(line[:idx])
+					value := strings.TrimSpace(line[idx+1:])
+					valueMap[name] = value
+				}
+			}
+		}
+
+		// Build vars list with values
+		var vars []LocalVar
+		for _, name := range names {
+			value := valueMap[name]
+			// Truncate multi-line values for display
+			if nl := strings.Index(value, "\n"); nl != -1 {
+				value = value[:nl] + "..."
+			}
+			vars = append(vars, LocalVar{Name: name, Value: value, IsLocal: locals[name]})
+		}
+		pane.SetVars(vars)
+	})
+}
+
 // isTracerFocused returns true if the focused pane is a tracer in trace mode (not edit mode)
 func (m *Model) isTracerFocused() bool {
 	fp := m.panes.FocusedPane()
@@ -1146,6 +1369,8 @@ func (m *Model) dispatchCommand(action string) (tea.Model, tea.Cmd) {
 		m.toggleDebugPane()
 	case "stack":
 		m.toggleStackPane()
+	case "variables":
+		m.toggleVariablesPane()
 	case "breakpoint":
 		m.toggleBreakpoint()
 	case "keys":
@@ -1256,6 +1481,7 @@ func (m *Model) openCommandPalette() {
 	commands := []Command{
 		{Name: "debug", Help: "Toggle debug pane"},
 		{Name: "stack", Help: "Toggle stack pane"},
+		{Name: "variables", Help: "Toggle variables pane (tracer)"},
 		{Name: "breakpoint", Help: "Toggle breakpoint on current line"},
 		{Name: "step-into", Help: "Tracer: step into (Enter)"},
 		{Name: "step-over", Help: "Tracer: step over (n)"},
@@ -1332,6 +1558,13 @@ func (m Model) handleRide(ev rideEvent) (tea.Model, tea.Cmd) {
 				m.lastExecute = "" // Clear after matching
 				return m, waitForRide(m.msgs)
 			}
+			// Skip internal query echo
+			if m.internalQuery != "" {
+				if result, ok := msg.Args["result"].(string); ok && result == m.internalQuery+"\n" {
+					m.log("  (skipped: internal query echo)")
+					return m, waitForRide(m.msgs)
+				}
+			}
 			// Skip )off from external input - just noise before disconnect
 			if result, ok := msg.Args["result"].(string); ok && strings.TrimSpace(result) == ")off" {
 				m.log("  (skipped: external )off)")
@@ -1340,6 +1573,16 @@ func (m Model) handleRide(ev rideEvent) (tea.Model, tea.Cmd) {
 			// Input from elsewhere - display it
 			m.log("  (external input)")
 		}
+
+		// Route output to internal query if one is pending
+		if m.internalQuery != "" {
+			if result, ok := msg.Args["result"].(string); ok {
+				m.internalOutputs = append(m.internalOutputs, result)
+				m.log("  (internal query output)")
+			}
+			return m, waitForRide(m.msgs)
+		}
+
 		if result, ok := msg.Args["result"].(string); ok {
 			result = strings.TrimSuffix(result, "\n")
 			for _, line := range strings.Split(result, "\n") {
@@ -1354,6 +1597,24 @@ func (m Model) handleRide(ev rideEvent) (tea.Model, tea.Cmd) {
 			wasReady := m.ready
 			m.ready = t > 0
 			m.log("  ready: %v → %v", wasReady, m.ready)
+
+			// Complete internal query if one was pending
+			if m.ready && m.internalQuery != "" {
+				m.log("  internal query complete: %d outputs", len(m.internalOutputs))
+				oldQuery := m.internalQuery
+				if m.internalCallback != nil {
+					m.internalCallback(m.internalOutputs)
+				}
+				// Only clear if callback didn't start a new query
+				if m.internalQuery == oldQuery {
+					m.internalQuery = ""
+					m.internalCallback = nil
+					m.internalOutputs = nil
+				}
+				// Don't add new input line for internal queries
+				return m, waitForRide(m.msgs)
+			}
+
 			if m.ready {
 				// Add new input line with APL indent
 				m.lines = append(m.lines, Line{Text: aplIndent})
@@ -1474,6 +1735,15 @@ func (m Model) handleRide(ev rideEvent) (tea.Model, tea.Cmd) {
 			}
 		}
 		m.log("  highlight: token=%d, line=%d", win, line)
+
+		// Refresh variables pane if open and we're in tracer
+		if m.isInTracerStack(win) {
+			if pane := m.panes.Get("variables"); pane != nil {
+				if vp, ok := pane.Content.(*VariablesPane); ok {
+					m.fetchVariables(vp)
+				}
+			}
+		}
 
 	case "WindowTypeChanged":
 		win := int(msg.Args["win"].(float64))

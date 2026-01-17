@@ -36,6 +36,7 @@ type KeyMapConfig struct {
 	Execute          []string `json:"execute"`
 	ToggleDebug      []string `json:"toggle_debug"`
 	ToggleStack      []string `json:"toggle_stack"`
+	ToggleLocals     []string `json:"toggle_locals"`
 	ToggleBreakpoint []string `json:"toggle_breakpoint"`
 	Reconnect        []string `json:"reconnect"`
 	CommandPalette   []string `json:"command_palette"`
@@ -101,6 +102,7 @@ func (c *Config) ToKeyMap() KeyMap {
 		Execute:          c.binding(c.Keys.Execute, "", "execute"),
 		ToggleDebug:      c.bindingWithLeader(c.Keys.ToggleDebug, "debug"),
 		ToggleStack:      c.bindingWithLeader(c.Keys.ToggleStack, "stack"),
+		ToggleLocals:     c.bindingWithLeader(c.Keys.ToggleLocals, "locals"),
 		ToggleBreakpoint: c.bindingWithLeader(c.Keys.ToggleBreakpoint, "breakpoint"),
 		Reconnect:        c.bindingWithLeader(c.Keys.Reconnect, "reconnect"),
 		CommandPalette:   c.bindingWithLeader(c.Keys.CommandPalette, "commands"),

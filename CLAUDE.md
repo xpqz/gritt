@@ -40,6 +40,25 @@ gritt connects to either:
 
 ## Reference Materials
 
+### ~/dev/ride/docs/protocol.md (FIRST POINT OF CALL)
+
+**Read this first** when implementing any RIDE protocol feature. Complete documentation of all messages, their arguments, and expected behavior. Covers:
+- Connection setup, handshake, session control
+- Window management (OpenWindow, SaveChanges, CloseWindow)
+- Debugging (SetHighlightLine, stepping commands, breakpoints)
+- Threads, interrupts, autocompletion, value tips
+- Dialogs, workspace explorer (TreeList), status bar
+
+### ~/dev/ride (JavaScript)
+
+Dyalog's official RIDE implementation. The source of truth for protocol behavior.
+
+- Look here when something doesn't work as expected
+- Contains handling for all UI messages (OpenWindow, dialogs, etc.)
+- `src/wse.js` - Workspace explorer (TreeList usage)
+- `src/dbg.js` - Debug pane (SI stack, threads)
+- `src/ed.js` - Editor implementation
+
 ### ~/dev/dyctl (Clojure)
 
 Working RIDE protocol implementation. Key files:
@@ -48,13 +67,6 @@ Working RIDE protocol implementation. Key files:
 - `src/dyctl/multiplexer.clj` - Multi-client session sharing
 - `MULTIPLEXER.md` - Protocol flow documentation
 - `CLAUDE.md` - Protocol details (message format, handshake sequence)
-
-### ~/dev/ride (JavaScript)
-
-Dyalog's official RIDE implementation. The source of truth for protocol behavior.
-
-- Look here when something doesn't work as expected
-- Contains handling for all UI messages (OpenWindow, dialogs, etc.)
 
 ### Protocol Summary
 
@@ -104,7 +116,14 @@ Dyalog's official RIDE implementation. The source of truth for protocol behavior
 
 ## Testing
 
-Start Dyalog in SERVE mode:
+**Main test:** `go test -v -run TestTUI` (in tui_test.go)
+
+**Always kill Dyalog before running tests** - stale state causes flaky failures:
+```bash
+pkill -9 dyalog; sleep 1; go test -v -run TestTUI
+```
+
+For manual testing, start Dyalog in SERVE mode:
 ```bash
 RIDE_INIT=SERVE:*:4502 /path/to/dyalog +s -q
 ```
@@ -116,6 +135,14 @@ Or use the multiplexer from dyctl:
 ```
 
 Then connect gritt to port 4502.
+
+### Test Reports
+
+Running `go test` generates reports in `test-reports/`:
+- `test-YYYYMMDD-HHMMSS.html` - Visual report with snapshots
+- `test-YYYYMMDD-HHMMSS.txt` - Plain text version (easier to grep/parse)
+
+Use the **text reports** for debugging test failures - they contain the same snapshots without HTML formatting.
 
 ## CLI Usage
 
@@ -172,8 +199,9 @@ Critical path (approved):
 
 Latin-named files/directories for session continuity:
 
-- **FACIENDA.md** - *Things to be done*: TODO list with completed section
-- **OPERANDA.md** - *Things being worked on*: Current state, read at session start
+- **README.md** - User's voice. Add factual updates, user will edit. Don't remove personal commentary.
+- **FACIENDA.md** - *Things to be done*: THE TODO list. Any future task goes here, even if mentioned casually by user.
+- **OPERANDA.md** - *Things being worked on*: Current state/context for session continuity. NOT a TODO list - don't duplicate tasks here.
 - **deliberanda/** - *Things to be deliberated*: One file per pending decision (no prefix, sorted by modification time)
 - **adnotata/** - *Things noted*: Numbered exploration entries (0001-topic.md)
 
@@ -192,3 +220,4 @@ Latin-named files/directories for session continuity:
 - Create adnotata/ entries for exploratory work (numbered sequentially)
 - Keep failed attempts in adnotata/ for reference
 - Create deliberanda/ files for decisions needing discussion
+- **Never do git operations** - user handles all commits

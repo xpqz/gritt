@@ -11,6 +11,7 @@ Leader key: `Ctrl+]` (keeps all keys free for APL input)
 | Enter | Execute current line |
 | C-] d | Toggle debug pane |
 | C-] s | Toggle stack pane |
+| C-] l | Toggle variables pane (~ toggles [local]/[all]) |
 | C-] b | Toggle breakpoint (in editor/tracer) |
 | C-] : | Command palette |
 | C-] m | Pane move mode |
@@ -53,6 +54,15 @@ Single-key commands in tracer mode (no leader needed):
 | C-] b | Toggle breakpoint on current line |
 | Esc | Save and close |
 
+## Variables Pane Keys
+
+| Key | Action |
+|-----|--------|
+| Up/Down | Select variable |
+| Enter | Open variable in editor |
+| ~ | Toggle [local]/[all] mode (• marks locals in all mode) |
+| Esc | Close pane |
+
 ## APL Input
 
 **Backtick prefix**: Press `` ` `` then a key:
@@ -87,6 +97,7 @@ Press `C-] :` to open. Type to filter, Enter to select:
 |---------|--------|
 | debug | Toggle debug pane |
 | stack | Toggle stack pane |
+| variables | Toggle variables pane (~ toggles [local]/[all]) |
 | breakpoint | Toggle breakpoint |
 | keys | Show key bindings |
 | symbols | Search APL symbols |

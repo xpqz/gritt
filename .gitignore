@@ -2,3 +2,5 @@
 gritt
 test-reports
 /session-*
+/cmd/explore*
+*.swp

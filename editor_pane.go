@@ -33,10 +33,11 @@ type EditorPane struct {
 	onForward    func()
 
 	// Styles
-	cursorStyle     lipgloss.Style
-	lineNumStyle    lipgloss.Style
-	breakpointStyle lipgloss.Style
-	highlightLine   int // -1 = none, otherwise 0-based line for tracer highlight
+	cursorStyle      lipgloss.Style
+	lineNumStyle     lipgloss.Style
+	breakpointStyle  lipgloss.Style
+	tracerLineStyle  lipgloss.Style // Bold for current line in tracer
+	highlightLine    int            // -1 = none, otherwise 0-based line for tracer highlight
 }
 
 // NewEditorPane creates an editor pane for the given window
@@ -51,6 +52,7 @@ func NewEditorPane(w *EditorWindow, tracerKeys TracerKeysConfig, onSave, onClose
 			Foreground(lipgloss.Color("0")),
 		lineNumStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("243")),
 		breakpointStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("9")), // Red
+		tracerLineStyle: lipgloss.NewStyle().Foreground(DyalogOrange),
 		highlightLine:   -1,
 	}
 }
@@ -80,6 +82,8 @@ func (e *EditorPane) Title() string {
 		} else {
 			suffix = " [tracer]"
 		}
+	} else {
+		suffix = " [edit]"
 	}
 	return prefix + e.window.Name + suffix
 }
@@ -136,10 +140,21 @@ func (e *EditorPane) Render(w, h int) string {
 
 		// Render line with cursor if on this line
 		var lineContent string
-		if lineIdx == e.window.CursorRow {
-			lineContent = e.renderLineWithCursor(textRunes, e.window.CursorCol, contentW)
+		isCurrentLine := lineIdx == e.window.CursorRow
+		if isCurrentLine {
+			// Pass tracer style if in tracer mode
+			var lineStyle *lipgloss.Style
+			if e.InTracerMode() {
+				lineStyle = &e.tracerLineStyle
+			}
+			lineContent = e.renderLineWithCursor(textRunes, e.window.CursorCol, contentW, lineStyle)
 		} else {
 			lineContent = e.renderLine(textRunes, contentW)
+		}
+
+		// In tracer mode, highlight entire current line including line number
+		if isCurrentLine && e.InTracerMode() {
+			lineNum = e.tracerLineStyle.Render(fmt.Sprintf("[%*d]", numWidth-2, lineIdx))
 		}
 
 		lines = append(lines, bp+" "+lineNum+" "+lineContent)
@@ -157,7 +172,8 @@ func (e *EditorPane) renderLine(runes []rune, w int) string {
 }
 
 // renderLineWithCursor renders a line with cursor highlight at col position
-func (e *EditorPane) renderLineWithCursor(runes []rune, col, w int) string {
+// If lineStyle is non-nil, it's applied to the non-cursor parts (for tracer highlight)
+func (e *EditorPane) renderLineWithCursor(runes []rune, col, w int, lineStyle *lipgloss.Style) string {
 	// Clamp cursor to valid range
 	if col > len(runes) {
 		col = len(runes)
@@ -181,12 +197,22 @@ func (e *EditorPane) renderLineWithCursor(runes []rune, col, w int) string {
 		after = string(runes[col+1:])
 	}
 
+	// Apply line style to non-cursor parts if provided
+	if lineStyle != nil {
+		before = lineStyle.Render(before)
+		after = lineStyle.Render(after)
+	}
+
 	line := before + cursorChar + after
 
 	// Pad to width (approximate due to ANSI codes)
 	visibleLen := len(runes)
 	if visibleLen < w {
-		return line + strings.Repeat(" ", w-visibleLen-1)
+		pad := strings.Repeat(" ", w-visibleLen-1)
+		if lineStyle != nil {
+			pad = lineStyle.Render(pad)
+		}
+		return line + pad
 	}
 	return line
 }

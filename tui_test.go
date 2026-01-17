@@ -402,6 +402,10 @@ func TestTUI(t *testing.T) {
 	runner.SendKeys("BSpace")
 	runner.Sleep(100 * time.Millisecond)
 
+	// Erase B if it exists from previous runs
+	runner.SendLine(")erase B")
+	runner.Sleep(300 * time.Millisecond)
+
 	// Define function B with multiple lines
 	runner.SendLine(")ed B")
 	runner.Sleep(500 * time.Millisecond)
@@ -564,7 +568,7 @@ func TestTUI(t *testing.T) {
 	runner.SendLine(")erase X Y Z")
 	runner.Sleep(500 * time.Millisecond)
 
-	// Define Z (will error)
+	// Define Z (will error) - with LOCAL variables a and b declared in header
 	runner.SendLine(")ed Z")
 	runner.Sleep(500 * time.Millisecond)
 	runner.Snapshot("Editor opened for Z")
@@ -573,11 +577,18 @@ func TestTUI(t *testing.T) {
 		return runner.Contains("Z")
 	})
 
-	// Type function body: 9÷0 (divide by zero error)
-	runner.SendKeys("End", "Enter", "Enter")
+	// Add local variable declarations to header: Z;a;b
+	// Editor starts with cursor on line [0] which shows "Z"
+	runner.SendKeys("End")           // Go to end of "Z"
+	runner.SendText(";a;b")          // Add local declarations
+	runner.SendKeys("Enter", "Enter") // Move to body
+	runner.SendText("a←42")
+	runner.SendKeys("Enter")
+	runner.SendText("b←'hello'")
+	runner.SendKeys("Enter")
 	runner.SendText("9÷0")
 	runner.Sleep(200 * time.Millisecond)
-	runner.Snapshot("Z function with 9÷0")
+	runner.Snapshot("Z function with locals a;b and 9÷0")
 
 	// Save and close - wait for editor to actually close
 	runner.SendKeys("Escape")
@@ -598,6 +609,8 @@ func TestTUI(t *testing.T) {
 	})
 
 	runner.SendKeys("End", "Enter", "Enter")
+	runner.SendText("yvar←123") // Variable in Y's scope (not local to Z)
+	runner.SendKeys("Enter")
 	runner.SendText("Z")
 	runner.Sleep(200 * time.Millisecond)
 	runner.SendKeys("Escape")
@@ -659,7 +672,79 @@ func TestTUI(t *testing.T) {
 		return runner.Contains("X[") || runner.Contains("X ")
 	})
 
-	// Close stack pane before other tests
+	// Close stack pane before variables test
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
+	// === VARIABLES PANE TEST ===
+	// Open variables pane (C-] l) - should show Z's local variables
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("l")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("Variables pane showing Z's variables")
+
+	runner.Test("Variables pane shows 'a'", func() bool {
+		return runner.Contains("a") && runner.Contains("42")
+	})
+
+	runner.Test("Variables pane shows 'b'", func() bool {
+		return runner.Contains("b") && runner.Contains("hello")
+	})
+
+	// Test 1: Select second variable (b) with Down arrow
+	runner.SendKeys("Down")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Variables pane - 'b' selected")
+
+	// Test 2: Open editor for variable 'b' with Enter
+	runner.SendKeys("Enter")
+	runner.Sleep(800 * time.Millisecond)
+	runner.Snapshot("Editor opened for variable b")
+
+	runner.Test("Editor opens for variable b", func() bool {
+		// Should see an editor pane for 'b' with 'hello' content
+		return runner.Contains("b [edit]") && runner.Contains("hello")
+	})
+
+	// Close the variable editor
+	runner.SendKeys("Escape")
+	runner.Sleep(300 * time.Millisecond)
+
+	// Re-focus variables pane
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("l")
+	runner.Sleep(500 * time.Millisecond)
+
+	// Test: ~ toggles to "all" mode (shows globals too)
+	runner.SendText("~")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Variables pane - all mode")
+
+	runner.Test("Variables pane shows [all] in title", func() bool {
+		return runner.Contains("[all]")
+	})
+
+	runner.Test("All mode shows bullet for locals (a, b)", func() bool {
+		return runner.Contains("• a") && runner.Contains("• b")
+	})
+
+	runner.Test("All mode shows yvar without bullet", func() bool {
+		// yvar is from Y's scope, not local to Z
+		return runner.Contains("yvar") && !runner.Contains("• yvar")
+	})
+
+	// ~ back to locals mode
+	runner.SendText("~")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Variables pane - back to locals mode")
+
+	runner.Test("Variables pane back to [local] mode", func() bool {
+		return runner.Contains("[local]")
+	})
+
+	// Close variables pane
 	runner.SendKeys("Escape")
 	runner.Sleep(200 * time.Millisecond)
 
@@ -723,6 +808,31 @@ func TestTUI(t *testing.T) {
 	runner.Test("Stack cleared after popping all frames", func() bool {
 		return !runner.Contains("[tracer]")
 	})
+
+	// === TEST 5: SESSION VARIABLES (main window, not tracer) ===
+	// Create a global variable in the session
+	runner.SendLine("sessionVar←999")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("After creating sessionVar")
+
+	// Open variables pane in main session context
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("l")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("Session variables pane")
+
+	runner.Test("Session variables pane shows sessionVar", func() bool {
+		return runner.Contains("sessionVar") && runner.Contains("999")
+	})
+
+	// Close variables pane
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
+	// Clean up the test variable
+	runner.SendLine(")erase sessionVar")
+	runner.Sleep(300 * time.Millisecond)
 
 	// Final snapshot
 	runner.Snapshot("Final state")

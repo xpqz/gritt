@@ -11,6 +11,7 @@ type KeyMap struct {
 	Execute          key.Binding
 	ToggleDebug      key.Binding // After leader
 	ToggleStack      key.Binding // After leader
+	ToggleLocals     key.Binding // After leader - show local variables in tracer
 	ToggleBreakpoint key.Binding // After leader - toggle breakpoint in editor/tracer
 	Reconnect        key.Binding // After leader
 	CommandPalette   key.Binding // After leader

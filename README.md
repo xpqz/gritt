@@ -10,7 +10,7 @@ Pronounced like "grit" (G from Go + German "Ritt" = ride).
 
 - Full TUI with floating panes for editors, tracer, debug info
 - APL input: backtick prefix (`` `i `` → `⍳`), symbol search, APLcart integration
-- Debugging: breakpoints, stepping (into/over/out), stack trace, edit while debugging (very much a 'maybe' - don't trust it)
+- Debugging: breakpoints, stepping (into/over/out), stack trace, variables pane, edit while debugging (very much a 'maybe' - don't trust it)
 - Command palette for quick access to all commands
 - Connection resilience - stays alive on disconnect, allows reconnect
 - Single-expression and stdin modes for scripting
