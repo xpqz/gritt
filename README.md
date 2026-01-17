@@ -1,6 +1,6 @@
 # gritt
 
-![Iris](logo.png)
+![grhorse](logo-small.jpg)
 
 A terminal IDE for Dyalog APL.
 
