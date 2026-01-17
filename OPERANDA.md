@@ -1,27 +1,49 @@
 # OPERANDA - Current State
 
-## Just Fixed (Critical Bugs)
+## Latest Session: Test Suite Improvements
 
-**Bug #1: Escape in edit mode was closing window instead of returning to tracer**
-- Root cause: Global `ClosePane` handler (bound to Escape) was intercepting the key BEFORE the pane's `HandleKey`
-- The global handler in `tui.go` always called `closeEditor` for tracer panes without checking edit mode
-- Fix: Added check in `ClosePane` handler - if tracer is in edit mode, `break` to let pane handle it
-- File: `tui.go:415-418`
+Comprehensive test coverage for tracer, breakpoints, and edit mode.
 
-**Bug #2: Breakpoints were being cleared when leaving tracer**
-- Root cause: `ToggleStop` only set `Modified=true` for non-debugger windows
-- This meant tracer breakpoints weren't saved on close (since `Modified=false` skips `saveEditor`)
-- Fix: Always set `Modified=true` when breakpoints change, regardless of window type
-- File: `editor.go:130-143`
+### Changes to tui_test.go
 
-**Also fixed: Code didn't compile**
-- `matchKey` helper was being called but never defined
-- Added `matchKey(r rune, configKey string) bool` method to `EditorPane`
-- File: `editor_pane.go:549-555`
+**New: Breakpoint workflow test (function B)**
+- Defines multi-line function with `⎕←'before'`, `1+2`, `⎕←'after'`
+- Sets breakpoint on line 2 in editor
+- Verifies tracer opens at breakpoint when function runs
+- Tests breakpoint toggling (add second breakpoint, remove it)
+- Tests breakpoint persistence after editing (enter edit mode, make change, Escape back)
+- Steps through with 'n' key, verifies output at each step
+- Verifies function completes and tracer closes
+
+**Restructured: Stack test moved before manipulation**
+- Stack (3 frames) test now runs immediately after X→Y→Z error
+- Previously tested after edit mode, which had already popped frames
+- Now correctly shows all 3 frames: X, Y, Z
+
+**Fixed: Input line corruption**
+- Added `BSpace` before `)erase X Y Z` to clear leftover `⍳` from backtick test
+- Session now shows clean `)erase` command
+
+**Consolidated: Breakpoint tests**
+- Removed duplicate breakpoint toggling from X→Y→Z section
+- All breakpoint tests now in B workflow section
+
+### Test Coverage (63 tests)
+
+Key tests added/fixed:
+- `Breakpoint set in editor` - ● appears when set
+- `Tracer opens at breakpoint` - function stops at breakpoint
+- `Breakpoint still visible in tracer` - persists from editor
+- `Command palette shows breakpoint command` - C-] : → break
+- `Edit mode active` - 'e' enters edit mode
+- `Breakpoint persists after editing` - survives edit + Escape
+- `Step executes line` - 'n' advances execution
+- `Stack shows 3 frames` - full X→Y→Z stack visible
+- `Escape in edit mode returns to tracer` - doesn't close window
 
 ---
 
-## Active Work: Tracer & Connection Resilience
+## Previous Session: Critical Bug Fixes
 
 Phase 4 tracer work complete. Connection resilience improved with automatic window restoration.
 

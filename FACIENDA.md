@@ -167,7 +167,7 @@ RIDE handles multiline poorly. Research needed on:
 - [x] CloseAllWindows command (close-all-windows via command palette)
 - [x] Command palette scrolling support
 - [x] Protocol exploration tool (cmd/explore/)
-- [x] 54 passing tests
+- [x] 63 passing tests (comprehensive breakpoint & tracer coverage)
 
 ### CLI & Scripting
 - [x] Non-interactive mode: -e for single expression, -stdin for piping
@@ -196,4 +196,4 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Backtick prefix for APL symbols (`` `i `` → `⍳`, `` `r `` → `⍴`, etc.)
 - [x] Symbol search (C-] : → symbols) - search by name
 - [x] APLcart integration (C-] : → aplcart) - search 3000+ idioms
-- [x] 44 passing tests
+- [x] 63 passing tests

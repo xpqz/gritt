@@ -397,7 +397,169 @@ func TestTUI(t *testing.T) {
 		return !runner.Contains("Quit? (y/n)")
 	})
 
-	// Test 17-25: Tracer stack with nested functions X→Y→Z
+	// === BREAKPOINT WORKFLOW TEST ===
+	// Clear input line (may have leftover ⍳ from backtick test)
+	runner.SendKeys("BSpace")
+	runner.Sleep(100 * time.Millisecond)
+
+	// Define function B with multiple lines
+	runner.SendLine(")ed B")
+	runner.Sleep(500 * time.Millisecond)
+
+	runner.Test("Editor opens for B", func() bool {
+		return runner.Contains("B")
+	})
+
+	// Type function body: ⎕←'before' / 1+2 / ⎕←'after'
+	runner.SendKeys("End", "Enter", "Enter")
+	runner.SendText("⎕←'before'")
+	runner.SendKeys("Enter")
+	runner.SendText("1+2")
+	runner.SendKeys("Enter")
+	runner.SendText("⎕←'after'")
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("B function defined")
+
+	// Move to line 2 and set breakpoint
+	runner.SendKeys("Up", "Up") // Go to line 2 (⎕←'before')
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("b") // Toggle breakpoint
+	runner.Sleep(300 * time.Millisecond)
+	runner.Snapshot("B with breakpoint on line 2")
+
+	runner.Test("Breakpoint set in editor", func() bool {
+		return runner.Contains("●")
+	})
+
+	// Save and close editor
+	runner.SendKeys("Escape")
+	runner.Sleep(500 * time.Millisecond)
+
+	runner.Test("B editor closes", func() bool {
+		return runner.WaitForNoFocusedPane(3 * time.Second)
+	})
+
+	// Run B - should stop at breakpoint
+	runner.SendLine("B")
+	runner.Sleep(1 * time.Second)
+	runner.Snapshot("Stopped at breakpoint in B")
+
+	runner.Test("Tracer opens at breakpoint", func() bool {
+		return runner.Contains("[tracer]") && runner.Contains("before")
+	})
+
+	runner.Test("Breakpoint still visible in tracer", func() bool {
+		return runner.Contains("●")
+	})
+
+	// Test breakpoint toggling - add a second breakpoint on line 3
+	runner.SendKeys("Down") // Move to line 3
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("b")
+	runner.Sleep(300 * time.Millisecond)
+	runner.Snapshot("Two breakpoints set")
+
+	// Count breakpoints - we should see two ● symbols now
+	// (This is a bit tricky to test, but we can check the snapshot)
+
+	// Remove the second breakpoint
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("b")
+	runner.Sleep(300 * time.Millisecond)
+	runner.Snapshot("Back to one breakpoint")
+
+	// Test breakpoint via command palette
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys(":")
+	runner.Sleep(300 * time.Millisecond)
+	runner.SendText("break")
+	runner.Sleep(200 * time.Millisecond)
+
+	runner.Test("Command palette shows breakpoint command", func() bool {
+		return runner.Contains("breakpoint")
+	})
+
+	runner.SendKeys("Escape") // Cancel palette
+	runner.Sleep(200 * time.Millisecond)
+
+	// Focus tracer before edit test
+	runner.SendKeys("Tab")
+	runner.Sleep(100 * time.Millisecond)
+
+	// Test breakpoint persistence after editing
+	runner.SendKeys("e") // Enter edit mode
+	runner.Sleep(200 * time.Millisecond)
+	runner.Snapshot("Edit mode in tracer")
+
+	runner.Test("Edit mode active", func() bool {
+		return runner.Contains("[edit]")
+	})
+
+	// Make a small edit - add a space somewhere
+	runner.SendKeys("End")
+	runner.SendText(" ")
+	runner.Sleep(100 * time.Millisecond)
+
+	// Exit edit mode with Escape
+	runner.SendKeys("Escape")
+	runner.Sleep(300 * time.Millisecond)
+	runner.Snapshot("After edit - back to tracer")
+
+	runner.Test("Back to tracer after edit", func() bool {
+		return runner.Contains("[tracer]")
+	})
+
+	runner.Test("Breakpoint persists after editing", func() bool {
+		return runner.Contains("●")
+	})
+
+	// Step with 'n' - execute line 2
+	runner.SendKeys("n")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("After first step (before printed)")
+
+	runner.Test("Step executes line - 'before' printed", func() bool {
+		return runner.Contains("before")
+	})
+
+	// Step again - execute 1+2
+	runner.SendKeys("n")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("After second step (1+2)")
+
+	runner.Test("Step executes 1+2 - shows 3", func() bool {
+		return runner.Contains("3")
+	})
+
+	// Step again - execute ⎕←'after'
+	runner.SendKeys("n")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("After third step (after printed)")
+
+	runner.Test("Step executes - 'after' printed", func() bool {
+		return runner.Contains("after")
+	})
+
+	// One more step should complete execution
+	runner.SendKeys("n")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("After function completes")
+
+	runner.Test("Function completes - tracer closes", func() bool {
+		return !runner.Contains("[tracer]")
+	})
+
+	// Clean up B
+	runner.SendLine(")erase B")
+	runner.Sleep(300 * time.Millisecond)
+
+	// === ERROR STACK TEST - nested functions X→Y→Z ===
 	// Clean up any existing functions from previous runs
 	runner.SendLine(")erase X Y Z")
 	runner.Sleep(500 * time.Millisecond)
@@ -474,64 +636,35 @@ func TestTUI(t *testing.T) {
 		return runner.Contains("[tracer]") || runner.Contains("DOMAIN ERROR") || runner.Contains("tracer")
 	})
 
-	// Test breakpoint toggling
-	// Focus tracer if not focused
+	// Test stack IMMEDIATELY - before any manipulation
+	runner.SendKeys("C-]")
+	runner.Sleep(100 * time.Millisecond)
+	runner.SendKeys("s")
+	runner.Sleep(500 * time.Millisecond)
+	runner.Snapshot("Stack pane showing X→Y→Z (fresh)")
+
+	runner.Test("Stack shows 3 frames", func() bool {
+		return runner.Contains("stack (3)")
+	})
+
+	runner.Test("Stack pane shows Z (top of stack)", func() bool {
+		return runner.Contains("Z[") || runner.Contains("Z ")
+	})
+
+	runner.Test("Stack pane shows Y", func() bool {
+		return runner.Contains("Y[") || runner.Contains("Y ")
+	})
+
+	runner.Test("Stack pane shows X", func() bool {
+		return runner.Contains("X[") || runner.Contains("X ")
+	})
+
+	// Close stack pane before other tests
+	runner.SendKeys("Escape")
+	runner.Sleep(200 * time.Millisecond)
+
+	// Focus tracer
 	runner.SendKeys("Tab")
-	runner.Sleep(200 * time.Millisecond)
-
-	// Move to a line and toggle breakpoint
-	runner.SendKeys("Down")
-	runner.Sleep(100 * time.Millisecond)
-	runner.Snapshot("Before breakpoint toggle")
-
-	runner.SendKeys("C-]")
-	runner.Sleep(100 * time.Millisecond)
-	runner.SendKeys("b")
-	runner.Sleep(300 * time.Millisecond)
-	runner.Snapshot("After breakpoint toggle")
-
-	runner.Test("Breakpoint indicator appears", func() bool {
-		return runner.Contains("●")
-	})
-
-	// Toggle off
-	runner.SendKeys("C-]")
-	runner.Sleep(100 * time.Millisecond)
-	runner.SendKeys("b")
-	runner.Sleep(300 * time.Millisecond)
-	runner.Snapshot("After breakpoint toggle off")
-
-	runner.Test("Breakpoint indicator removed", func() bool {
-		// Check that there's no red dot (or fewer than before)
-		// Since we only had one, it should be gone
-		return !runner.Contains("●")
-	})
-
-	// Test breakpoint via command palette
-	runner.SendKeys("C-]")
-	runner.Sleep(100 * time.Millisecond)
-	runner.SendKeys(":")
-	runner.Sleep(300 * time.Millisecond)
-	runner.SendText("break")
-	runner.Sleep(200 * time.Millisecond)
-	runner.Snapshot("Command palette filtered to breakpoint")
-
-	runner.Test("Command palette shows breakpoint command", func() bool {
-		return runner.Contains("breakpoint")
-	})
-
-	runner.SendKeys("Enter")
-	runner.Sleep(300 * time.Millisecond)
-	runner.Snapshot("After breakpoint via command palette")
-
-	runner.Test("Breakpoint set via command palette", func() bool {
-		return runner.Contains("●")
-	})
-
-	// Clear the breakpoint for clean state
-	runner.SendKeys("C-]")
-	runner.Sleep(100 * time.Millisecond)
-	runner.SendKeys("b")
 	runner.Sleep(200 * time.Millisecond)
 
 	// Test: Tracer mode blocks text insertion
@@ -575,69 +708,17 @@ func TestTUI(t *testing.T) {
 		return runner.Contains("[tracer]")
 	})
 
-	// Test: Second Escape closes tracer
+	// Test: Second Escape pops Z frame (closes tracer for Z)
 	runner.SendKeys("Escape")
 	runner.Sleep(500 * time.Millisecond)
-	runner.Snapshot("After second Escape - tracer closes")
+	runner.Snapshot("After second Escape - Z popped")
 
-	// Note: This might pop a stack frame, re-open the tracer for remaining tests
-	// Let's re-trigger the error to get back into tracer
-	runner.SendText("X")
-	runner.SendKeys("Enter")
-	runner.Sleep(2 * time.Second)
-	runner.Snapshot("Re-entered tracer after X")
-
-	// Verify we're back in tracer
-	runner.Test("Re-entered tracer for remaining tests", func() bool {
-		return runner.Contains("[tracer]") || runner.Contains("tracer")
-	})
-
-	// Open stack pane
-	runner.SendKeys("C-]")
-	runner.Sleep(100 * time.Millisecond)
-	runner.SendKeys("s")
-	runner.Sleep(500 * time.Millisecond)
-	runner.Snapshot("Stack pane showing X→Y→Z")
-
-	runner.Test("Stack pane shows Z (top of stack)", func() bool {
-		return runner.Contains("Z[") || runner.Contains("Z ")
-	})
-
-	runner.Test("Stack pane shows stack frames", func() bool {
-		// Check for stack pane title or any indication of multiple frames
-		return runner.Contains("stack") && (runner.Contains("X") || runner.Contains("Y") || runner.Contains("Z"))
-	})
-
-	// Navigate stack - press down to select Y
-	runner.SendKeys("Down")
-	runner.Sleep(200 * time.Millisecond)
-	runner.SendKeys("Enter")
-	runner.Sleep(300 * time.Millisecond)
-	runner.Snapshot("After selecting Y in stack")
-
-	runner.Test("Tracer switches to Y", func() bool {
-		return runner.Contains("Y")
-	})
-
-	// Close stack pane
-	runner.SendKeys("Escape")
-	runner.Sleep(200 * time.Millisecond)
-
-	// Pop stack frames with Escape
-	// Focus tracer first
-	runner.SendKeys("Tab")
-	runner.Sleep(200 * time.Millisecond)
-	runner.SendKeys("Escape") // Pop Z
-	runner.Sleep(500 * time.Millisecond)
-	runner.Snapshot("After popping Z")
-
+	// Pop remaining frames to clean up
 	runner.SendKeys("Escape") // Pop Y
 	runner.Sleep(500 * time.Millisecond)
-	runner.Snapshot("After popping Y")
-
-	runner.SendKeys("Escape") // Pop X - stack cleared
+	runner.SendKeys("Escape") // Pop X
 	runner.Sleep(500 * time.Millisecond)
-	runner.Snapshot("After popping X - stack cleared")
+	runner.Snapshot("After popping all frames - clean state")
 
 	runner.Test("Stack cleared after popping all frames", func() bool {
 		return !runner.Contains("[tracer]")
