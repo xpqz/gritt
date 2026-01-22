@@ -15,6 +15,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/lipgloss/v2"
+	"github.com/charmbracelet/x/cellbuf"
 	"gritt/ride"
 )
 
@@ -1513,6 +1514,7 @@ func (m *Model) renderAutocompleteOverlay(base string, screenW, screenH int) str
 
 	popup := m.acPopup.Render(40, screenH-4)
 	popupLines := strings.Split(popup, "\n")
+	popupH := len(popupLines)
 	popupW := 0
 	for _, line := range popupLines {
 		if lipgloss.Width(line) > popupW {
@@ -1527,39 +1529,35 @@ func (m *Model) renderAutocompleteOverlay(base string, screenW, screenH int) str
 		popupX = 0
 	}
 
-	// Composite popup over base
+	// Use cellbuf for ANSI-aware compositing
 	baseLines := strings.Split(base, "\n")
-	for i, pline := range popupLines {
-		y := popupY + i
-		if y < 0 || y >= len(baseLines) {
+	baseH := len(baseLines)
+
+	buf := cellbuf.NewBuffer(screenW, baseH)
+	cellbuf.SetContent(buf, base)
+
+	// Create popup buffer and overlay it
+	popupBuf := cellbuf.NewBuffer(popupW, popupH)
+	cellbuf.SetContent(popupBuf, popup)
+
+	for dy := 0; dy < popupH; dy++ {
+		y := popupY + dy
+		if y < 0 || y >= baseH {
 			continue
 		}
-
-		baseLine := baseLines[y]
-		baseRunes := []rune(baseLine)
-
-		// Build new line with popup overlaid
-		var newLine strings.Builder
-		for x := 0; x < popupX && x < len(baseRunes); x++ {
-			newLine.WriteRune(baseRunes[x])
-		}
-		for x := len(baseRunes); x < popupX; x++ {
-			newLine.WriteRune(' ')
-		}
-		newLine.WriteString(pline)
-
-		// Add rest of base line after popup
-		afterPopup := popupX + popupW
-		if afterPopup < len(baseRunes) {
-			for x := afterPopup; x < len(baseRunes); x++ {
-				newLine.WriteRune(baseRunes[x])
+		for dx := 0; dx < popupW; dx++ {
+			x := popupX + dx
+			if x < 0 || x >= screenW {
+				continue
+			}
+			cell := popupBuf.Cell(dx, dy)
+			if cell != nil {
+				buf.SetCell(x, y, cell)
 			}
 		}
-
-		baseLines[y] = newLine.String()
 	}
 
-	return strings.Join(baseLines, "\n")
+	return cellbuf.Render(buf)
 }
 
 // isTracerFocused returns true if the focused pane is a tracer in trace mode (not edit mode)
