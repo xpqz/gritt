@@ -94,6 +94,11 @@ func (c *Client) Send(cmd string, args map[string]any) error {
 	return Send(c.writer, cmd, args)
 }
 
+// SendRaw sends a raw JSON message to the interpreter.
+func (c *Client) SendRaw(json string) error {
+	return sendRaw(c.writer, json)
+}
+
 // Recv receives a single message from the interpreter.
 // Returns (message, raw, error). For JSON messages, message is non-nil.
 // For handshake messages, raw is the string.

@@ -174,8 +174,8 @@ func execCapture(client *ride.Client, expr string) string {
 	var buf strings.Builder
 
 	if err := client.Send("Execute", map[string]any{
-		"text":  expr + "\n",
 		"trace": 0,
+		"text":  expr + "\n",
 	}); err != nil {
 		return fmt.Sprintf("Execute failed: %v\n", err)
 	}

@@ -192,6 +192,9 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Non-interactive mode: -e for single expression, -stdin for piping
 - [x] Link support: -link path or -link ns:path runs ]link.create before executing
 - [x] apl script: ephemeral Dyalog instance for one-shot execution
+- [x] Socket mode: -sock /path for Unix socket server (APL as a service)
+  - Works: expressions, `⎕` input, workspace persistence across connections
+  - Broken: `⍞` input (NONCE ERROR, root cause unknown - see adnotata/0008)
 
 ### Connection Resilience
 - [x] Detect disconnection (EOF, connection reset) - show [disconnected] state with red border
