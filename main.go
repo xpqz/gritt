@@ -17,7 +17,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/colorprofile"
-	"gritt/ride"
+	"github.com/cursork/gritt/ride"
 )
 
 // launchDyalog starts Dyalog APL with RIDE on a random port

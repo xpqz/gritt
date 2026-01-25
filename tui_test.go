@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"gritt/uitest"
+	"github.com/cursork/gritt/uitest"
 )
 
 const (

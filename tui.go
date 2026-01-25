@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/colorprofile"
 	"github.com/charmbracelet/lipgloss/v2"
 	"github.com/charmbracelet/x/cellbuf"
-	"gritt/ride"
+	"github.com/cursork/gritt/ride"
 )
 
 // DyalogOrange returns the brand color adapted to terminal capabilities

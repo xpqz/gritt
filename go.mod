@@ -1,4 +1,4 @@
-module gritt
+module github.com/cursork/gritt
 
 go 1.24.0
 
