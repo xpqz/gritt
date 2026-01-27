@@ -290,7 +290,7 @@ func addDoc(mdPath, docsDir, repoRoot string, breadcrumb []string, out *[]docEnt
 		log.Printf("warning: %s: %v", mdPath, err)
 		return
 	}
-	content := stripFrontMatter(raw)
+	content := cleanContent(raw)
 
 	relFile, _ := filepath.Rel(repoRoot, absPath)
 	navPath := strings.Join(breadcrumb, " / ")
@@ -434,25 +434,64 @@ func findHelpFile(url, repoRoot string) (string, string, string, bool) {
 		relFile, _ := filepath.Rel(repoRoot, candidate)
 		// Build a synthetic nav path from the URL segments
 		navPath := buildNavPath(url)
-		return navPath, relFile, stripFrontMatter(content), true
+		return navPath, relFile, cleanContent(content), true
 	}
 
 	return "", "", "", false
 }
 
-// stripFrontMatter removes YAML front-matter (--- delimited) from markdown content.
-func stripFrontMatter(raw []byte) string {
+// cleanContent strips YAML front-matter and converts HTML elements to markdown.
+func cleanContent(raw []byte) string {
 	s := string(raw)
-	if !strings.HasPrefix(s, "---") {
-		return s
+
+	// Strip YAML front-matter
+	if strings.HasPrefix(s, "---") {
+		if end := strings.Index(s[3:], "\n---"); end >= 0 {
+			s = strings.TrimLeft(s[3+end+4:], "\n")
+		}
 	}
-	// Find closing ---
-	end := strings.Index(s[3:], "\n---")
-	if end < 0 {
-		return s
-	}
-	return strings.TrimLeft(s[3+end+4:], "\n")
+
+	// Remove hidden divs (search keywords)
+	s = hiddenDivRe.ReplaceAllString(s, "")
+
+	// Convert <h1>...<h3> to markdown headings
+	s = h1Re.ReplaceAllString(s, "# $1")
+	s = h2Re.ReplaceAllString(s, "## $1")
+	s = h3Re.ReplaceAllString(s, "### $1")
+
+	// Convert remaining span tags: extract text content
+	s = spanRe.ReplaceAllString(s, "$1")
+
+	// Convert <br/> and <br> to newlines
+	s = brRe.ReplaceAllString(s, "\n")
+
+	// Convert <kbd>text</kbd> to `text`
+	s = kbdRe.ReplaceAllString(s, "`$1`")
+
+	// Convert <sup>text</sup> to text (no markdown equivalent)
+	s = supRe.ReplaceAllString(s, "$1")
+
+	// Convert <strong>text</strong> to **text**
+	s = strongRe.ReplaceAllString(s, "**$1**")
+
+	// Strip remaining <div> and </div> tags
+	s = divRe.ReplaceAllString(s, "")
+
+	return s
 }
+
+var (
+	hiddenDivRe = regexp.MustCompile(`(?s)<div[^>]*display:\s*none[^>]*>.*?</div>\s*`)
+	h1Re        = regexp.MustCompile(`<h1[^>]*>(.*?)</h1>`)
+	h2Re        = regexp.MustCompile(`<h2[^>]*>(.*?)</h2>`)
+	h3Re        = regexp.MustCompile(`<h3[^>]*>(.*?)</h3>`)
+	spanRe      = regexp.MustCompile(`</?span[^>]*>`)
+	brRe        = regexp.MustCompile(`<br\s*/?>`)
+	kbdRe       = regexp.MustCompile(`<kbd>(.*?)</kbd>`)
+	supRe       = regexp.MustCompile(`<sup>(.*?)</sup>`)
+	strongRe    = regexp.MustCompile(`<strong>(.*?)</strong>`)
+	divRe       = regexp.MustCompile(`</?div[^>]*>`)
+)
 
 // buildNavPath creates a readable nav path from a URL like
 // "language-reference-guide/symbols/iota" → "Language Reference Guide / Symbols / Iota"
