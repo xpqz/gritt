@@ -14,6 +14,7 @@ var defaultConfigJSON []byte
 
 // Config holds all gritt configuration
 type Config struct {
+	Accent     string           `json:"accent"`
 	Keys       KeyMapConfig     `json:"keys"`
 	TracerKeys TracerKeysConfig `json:"tracer_keys"`
 }

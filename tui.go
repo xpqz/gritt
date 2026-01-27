@@ -19,17 +19,25 @@ import (
 	"github.com/cursork/gritt/ride"
 )
 
-// DyalogOrange returns the brand color adapted to terminal capabilities
-// RGB (242, 167, 79) = #F2A74F
-var DyalogOrange color.Color
+// AccentColor is the UI accent, configurable via "accent" in gritt.json.
+// Defaults to Dyalog orange (#F2A74F). Set e.g. "#808080" for grey.
+var AccentColor color.Color
 
-func initColors(profile colorprofile.Profile) {
+func initColors(profile colorprofile.Profile, accent string) {
 	complete := lipgloss.Complete(profile)
-	DyalogOrange = complete(
-		lipgloss.Color("3"),       // ANSI: yellow
-		lipgloss.Color("215"),     // ANSI256: #ffaf5f
-		lipgloss.Color("#F2A74F"), // TrueColor: exact RGB
-	)
+	if accent != "" {
+		AccentColor = complete(
+			lipgloss.Color("7"),     // ANSI: white (safe neutral fallback)
+			lipgloss.Color("245"),   // ANSI256: grey
+			lipgloss.Color(accent),  // TrueColor: user's choice
+		)
+	} else {
+		AccentColor = complete(
+			lipgloss.Color("3"),       // ANSI: yellow
+			lipgloss.Color("215"),     // ANSI256: #ffaf5f
+			lipgloss.Color("#F2A74F"), // TrueColor: Dyalog orange
+		)
+	}
 }
 
 // Cursor style - inverted colors
@@ -121,9 +129,8 @@ type rideEvent struct {
 
 // NewModel creates a Model connected to the given RIDE client.
 func NewModel(client *ride.Client, addr string, logFile io.Writer, profile colorprofile.Profile) Model {
-	initColors(profile)
-
 	cfg := LoadConfig()
+	initColors(profile, cfg.Accent)
 	m := Model{
 		client:    client,
 		addr:      addr,
@@ -2078,10 +2085,10 @@ func (m Model) View() string {
 		confirmStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("196")).Bold(true)
 		helpView = confirmStyle.Render("Quit? (y/n)")
 	} else if m.showQuitHint {
-		hintStyle := lipgloss.NewStyle().Foreground(DyalogOrange)
+		hintStyle := lipgloss.NewStyle().Foreground(AccentColor)
 		helpView = hintStyle.Render("Type C-] q to quit")
 	} else if m.leaderActive {
-		leaderStyle := lipgloss.NewStyle().Foreground(DyalogOrange).Bold(true)
+		leaderStyle := lipgloss.NewStyle().Foreground(AccentColor).Bold(true)
 		helpView = leaderStyle.Render("C-] ...")
 	} else if m.paneMoveMode {
 		moveStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("82")).Bold(true)
@@ -2093,7 +2100,7 @@ func (m Model) View() string {
 		backtickStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("207")).Bold(true)
 		helpView = backtickStyle.Render("` APL symbol...")
 	} else if m.isTracerFocused() {
-		tracerStyle := lipgloss.NewStyle().Foreground(DyalogOrange)
+		tracerStyle := lipgloss.NewStyle().Foreground(AccentColor)
 		helpView = tracerStyle.Render("n next • i into • o out • c continue • p back • f forward • e edit • esc close")
 	} else {
 		helpView = m.help.View(m.keys)
@@ -2109,7 +2116,7 @@ func (m Model) viewSession(w, h int) string {
 	content := m.renderSession(contentW, contentH)
 
 	title := "gritt"
-	borderColor := DyalogOrange
+	borderColor := AccentColor
 	if !m.connected {
 		title = "gritt [disconnected]"
 		borderColor = lipgloss.Color("196") // Red

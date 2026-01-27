@@ -36,7 +36,7 @@ func NewStackPane(getStack func() []StackFrame, onSelect func(token int)) *Stack
 		onSelect:      onSelect,
 		normalStyle:   lipgloss.NewStyle(),
 		selectedStyle: lipgloss.NewStyle().Background(lipgloss.Color("240")),
-		currentStyle:  lipgloss.NewStyle().Foreground(DyalogOrange).Bold(true),
+		currentStyle:  lipgloss.NewStyle().Foreground(AccentColor).Bold(true),
 	}
 }
 
