@@ -584,7 +584,7 @@ func TestTUI(t *testing.T) {
 	runner.SendKeys("Enter", "Enter") // Move to body
 	runner.SendText("a←42")
 	runner.SendKeys("Enter")
-	runner.SendText("b←'hello'")
+	runner.SendText("b←'hello world'⍝ok") // space test; ⍝ sent directly (backtick works manually but not via tmux)
 	runner.SendKeys("Enter")
 	runner.SendText("9÷0")
 	runner.Sleep(200 * time.Millisecond)

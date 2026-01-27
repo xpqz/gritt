@@ -193,8 +193,6 @@ Critical path (approved):
 
 ## Non-Goals
 
-- Spawning Dyalog processes (use dyctl or start manually)
-- Automation/scripting (use dyctl)
 - Being a general-purpose terminal library
 
 ## Project Organization
@@ -203,7 +201,7 @@ Latin-named files/directories for session continuity:
 
 - **README.md** - User's voice. Add factual updates, user will edit. Don't remove personal commentary.
 - **FACIENDA.md** - *Things to be done*: THE TODO list. Any future task goes here, even if mentioned casually by user.
-- **OPERANDA.md** - *Things being worked on*: Current state/context for session continuity. NOT a TODO list - don't duplicate tasks here.
+- **OPERANDA.md** - *Things being worked on*: Brief current state for session continuity. NOT a changelog - just what the next session needs to know to pick up where we left off. Keep it short.
 - **deliberanda/** - *Things to be deliberated*: One file per pending decision (no prefix, sorted by modification time)
 - **adnotata/** - *Things noted*: Numbered exploration entries (0001-topic.md)
 
@@ -223,3 +221,4 @@ Latin-named files/directories for session continuity:
 - Keep failed attempts in adnotata/ for reference
 - Create deliberanda/ files for decisions needing discussion
 - **Never do git operations** - user handles all commits
+- **Don't record test counts** - test results are ephemeral, don't belong in docs

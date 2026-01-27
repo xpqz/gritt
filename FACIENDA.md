@@ -7,6 +7,9 @@
 - [ ] Tab should cycle focus back to session (not just between panes)
 
 
+## Testing Infrastructure
+- [ ] Attempts to use tmux send-keys to test backticks for eg comments failed
+
 ## Future Enhancements
 - [ ] Protocol audit: evaluate all unsupported RIDE messages, prioritize by importance
 - [ ] Clipboard support (Ctrl+C copy, Ctrl+V paste)
@@ -121,7 +124,7 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Floating pane system (pane.go)
 - [x] Cell-based compositor for rendering panes over session
 - [x] Focus management with visual indicator (double border)
-- [ ] Mouse: click to focus, drag to move, drag edges to resize (partial - needs fix)
+- [x] Mouse: click to focus, drag to move (edge resize partial - see Priority section)
 - [x] Keyboard: Tab to cycle focus, Esc to close pane
 - [x] Debug pane migrated to floating pane (scrollable)
 
@@ -186,7 +189,6 @@ RIDE handles multiline poorly. Research needed on:
 - [x] `executeInternal` for silent queries (no session pollution)
 - [x] Single APL query `{⎕←⍵,'=',⍕⍎⍵}¨↓⎕NL 2` avoids callback chaining issues
 - [x] Parses function header for local declarations
-- [x] 71 passing tests
 
 ### CLI & Scripting
 - [x] Non-interactive mode: -e for single expression, -stdin for piping
@@ -219,4 +221,3 @@ RIDE handles multiline poorly. Research needed on:
 - [x] Backtick prefix for APL symbols (`` `i `` → `⍳`, `` `r `` → `⍴`, etc.)
 - [x] Symbol search (C-] : → symbols) - search by name
 - [x] APLcart integration (C-] : → aplcart) - search 3000+ idioms
-- [x] 71 passing tests

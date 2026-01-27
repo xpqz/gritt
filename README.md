@@ -30,6 +30,12 @@ Grab a binary from [Releases](https://github.com/cursork/gritt/releases):
 - `gritt-linux-arm64` - Linux ARM64
 - `gritt-linux-amd64` - Linux x86_64
 
+### go install
+
+```
+go install github.com/cursork/gritt
+```
+
 ### Build from source
 
 Requires Go 1.21+:
