@@ -245,8 +245,8 @@ func (p *Pane) Render() string {
 	}
 
 	// Style borders with Dyalog orange
-	borderStyle := lipgloss.NewStyle().Foreground(DyalogOrange)
-	titleStyle := lipgloss.NewStyle().Foreground(DyalogOrange).Bold(true)
+	borderStyle := lipgloss.NewStyle().Foreground(AccentColor)
+	titleStyle := lipgloss.NewStyle().Foreground(AccentColor).Bold(true)
 
 	contentW := p.Width - 2
 	contentH := p.Height - 2

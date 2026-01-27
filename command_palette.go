@@ -64,7 +64,7 @@ func (c *CommandPalette) Render(w, h int) string {
 	var sb strings.Builder
 
 	// Query line
-	promptStyle := lipgloss.NewStyle().Foreground(DyalogOrange)
+	promptStyle := lipgloss.NewStyle().Foreground(AccentColor)
 	sb.WriteString(promptStyle.Render(": "))
 	sb.WriteString(c.query)
 	sb.WriteString(cursorStyle.Render(" "))
@@ -75,7 +75,7 @@ func (c *CommandPalette) Render(w, h int) string {
 	sb.WriteString("\n")
 
 	// Commands list
-	selectedStyle := lipgloss.NewStyle().Background(DyalogOrange).Foreground(lipgloss.Color("0"))
+	selectedStyle := lipgloss.NewStyle().Background(AccentColor).Foreground(lipgloss.Color("0"))
 	helpStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 
 	listH := h - 2 // Account for query line and separator

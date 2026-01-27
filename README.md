@@ -95,6 +95,16 @@ gritt looks for `gritt.json` in order:
 
 These are not merged - first found, wins.
 
+The `accent` field sets the UI accent color (borders, highlights, selections). Default is Dyalog orange (`#F2A74F`). For a neutral grey:
+
+```json
+{
+  "accent": "#808080"
+}
+```
+
+Any `#RRGGBB` hex color works. Omit or leave empty for the default.
+
 ## Testing
 
 ```bash

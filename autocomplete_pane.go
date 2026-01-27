@@ -57,8 +57,8 @@ func (a *Autocomplete) Render(maxW, maxH int) string {
 		return ""
 	}
 
-	selectedStyle := lipgloss.NewStyle().Background(DyalogOrange).Foreground(lipgloss.Color("0"))
-	borderStyle := lipgloss.NewStyle().Foreground(DyalogOrange)
+	selectedStyle := lipgloss.NewStyle().Background(AccentColor).Foreground(lipgloss.Color("0"))
+	borderStyle := lipgloss.NewStyle().Foreground(AccentColor)
 
 	// Calculate dimensions
 	contentW := 0

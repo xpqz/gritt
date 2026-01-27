@@ -42,7 +42,7 @@ func NewVariablesPane(onOpen func(name string), onToggle func(mode VarsMode)) *V
 		onOpen:        onOpen,
 		onToggle:      onToggle,
 		mode:          VarsModeLocals,
-		selectedStyle: lipgloss.NewStyle().Foreground(DyalogOrange),
+		selectedStyle: lipgloss.NewStyle().Foreground(AccentColor),
 		normalStyle:   lipgloss.NewStyle().Foreground(lipgloss.Color("245")),
 	}
 }

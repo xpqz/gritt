@@ -52,7 +52,7 @@ func NewEditorPane(w *EditorWindow, tracerKeys TracerKeysConfig, onSave, onClose
 			Foreground(lipgloss.Color("0")),
 		lineNumStyle:    lipgloss.NewStyle().Foreground(lipgloss.Color("243")),
 		breakpointStyle: lipgloss.NewStyle().Foreground(lipgloss.Color("9")), // Red
-		tracerLineStyle: lipgloss.NewStyle().Foreground(DyalogOrange),
+		tracerLineStyle: lipgloss.NewStyle().Foreground(AccentColor),
 		highlightLine:   -1,
 	}
 }
